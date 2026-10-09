@@ -38,3 +38,19 @@ def snapshot_patterns() -> list[str]:
 
 def snapshot_cron() -> str:
     return os.environ.get("HELPER_SNAPSHOT_CRON", "5 */6 * * *")
+
+
+def weather_entities() -> list[str]:
+    return [p.strip() for p in os.environ.get("WEATHER_ENTITIES", "").splitlines() if p.strip()]
+
+
+def weather_cron() -> str:
+    return os.environ.get("WEATHER_CRON", "10 * * * *")
+
+
+def weather_horizon_hours() -> int:
+    return int(os.environ.get("WEATHER_HOURLY_HORIZON_HOURS", "72"))
+
+
+def weather_db() -> str:
+    return os.environ.get("WEATHER_DB", "weather_archive.sqlite3")

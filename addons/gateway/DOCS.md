@@ -75,3 +75,23 @@ under a different name. Run the catalog once before enabling.
 To check before enabling, set `helper_snapshot_entities` and open
 `/catalog/snapshot-preview`: it lists the exact lines that would be written and any helpers skipped
 (for example a value that is `unavailable`), and writes nothing.
+
+## Weather archive
+
+Forecasts change, and a replay of a past day needs the forecast that was known *then*, not today's
+view of that day. Add your Home Assistant weather entity (for example `weather.forecast_home`) to
+`weather_entities` and the gateway saves, on `weather_cron` (default hourly) and at start-up, the
+entity's current conditions and every forecast type it supports (hourly, daily, twice daily),
+stamped with the pull time. An unchanged forecast is stored once. History starts when you turn it
+on and cannot be filled in later.
+
+| Option | What it does |
+| --- | --- |
+| `weather_entities` | Entities to archive, one per line. Empty means nothing is archived. |
+| `weather_cron` | When to pull. Default hourly at ten past. |
+| `weather_hourly_horizon_hours` | Hours ahead to keep from each hourly forecast. Default 72. |
+
+Read it with `/weather/forecast`, `/weather/observations` and `/weather/status`. With an `X-As-Of`
+header, `/weather/forecast` returns the latest forecast pulled at or before that time, or 404 if
+none had been pulled yet; it never falls back to a later one. The gateway reads forecasts through a
+read-only websocket subscription, not a service call.

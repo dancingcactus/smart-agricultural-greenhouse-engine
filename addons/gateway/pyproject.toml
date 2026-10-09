@@ -2,7 +2,7 @@
 name = "greenhouse-gateway"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = ["httpx", "websockets", "pyyaml", "apscheduler<4", "fastapi", "uvicorn"]
+dependencies = ["httpx", "websockets>=13", "pyyaml", "apscheduler<4", "fastapi", "uvicorn"]
 
 [project.optional-dependencies]
 dev = ["pytest", "respx", "ruff"]

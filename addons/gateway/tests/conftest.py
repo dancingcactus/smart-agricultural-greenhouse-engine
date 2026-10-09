@@ -12,5 +12,5 @@ def _isolated_gateway_env(tmp_path, monkeypatch):
     yield
     from gateway.main import app
     app.dependency_overrides.clear()
-    deps.get_ha.cache_clear()
-    deps.get_vm.cache_clear()
+    for fn in (deps.get_ha, deps.get_vm):
+        getattr(fn, "cache_clear", lambda: None)()  # a test may have replaced the cached factory

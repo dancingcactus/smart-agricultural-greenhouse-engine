@@ -63,3 +63,21 @@ configuration:
       case-sensitive). Only input_number and input_boolean entities are ever written, whatever
       the pattern. Nothing is recorded if this is empty. Example: input_number.* records every
       number helper. Open /catalog/snapshot-preview to see exactly what would be written.
+  weather_entities:
+    name: Weather entities to archive
+    description: >-
+      Home Assistant weather entities whose forecasts should be saved, one per line, for example
+      weather.forecast_home. Nothing is archived while this is empty. Each pull saves the current
+      conditions and the hourly, daily and twice-daily forecasts the entity supports, stamped with
+      the time it was pulled, so past days can be replayed with the forecast that was known then.
+      Find yours with /ha/states?domain=weather.
+  weather_cron:
+    name: Weather pull schedule
+    description: >-
+      When to pull forecasts, as a cron expression. Default 10 * * * * is hourly at ten past. It
+      also pulls once when the add-on starts. An unchanged forecast is stored only once.
+  weather_hourly_horizon_hours:
+    name: Hourly forecast horizon (hours)
+    description: >-
+      How many hours ahead to keep from each hourly forecast, 6 to 240. Default 72, enough for
+      the three-day look-ahead. Longer horizons use more storage.

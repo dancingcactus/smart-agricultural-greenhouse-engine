@@ -102,3 +102,19 @@ history. A catalog run must exist first.
 This is the gateway's only write path. It is off by default, writes only to VictoriaMetrics, only
 `input_number` and `input_boolean` entities matching `helper_snapshot_entities`, and nothing in the
 HTTP API can trigger it. `GET /catalog/snapshot-preview` shows exactly what would be written.
+
+## Weather archive
+
+Set `weather_entities` (e.g. `weather.forecast_home`) and the gateway saves that entity's current
+conditions and each forecast it supports (hourly, daily, twice daily) on `weather_cron` (default
+hourly) and at start-up, stamped with the pull time. Forecasts come from the same read-only
+websocket subscription the Home Assistant frontend uses, not a service call, so the gateway still
+has no way to call a service. An unchanged forecast is stored once.
+
+- `GET /weather/forecast?type=hourly` returns the forecast as it was known at the as-of time
+  (`X-As-Of`, default now): the latest pull at or before it, or 404 if none had happened yet. It
+  never falls back to a later forecast.
+- `GET /weather/observations` and `GET /weather/status`. Observations are clipped to the as-of time.
+
+History starts when you turn it on. Actual past weather already in VictoriaMetrics (the entity's
+attributes) is separate and available through `/vm/*`.

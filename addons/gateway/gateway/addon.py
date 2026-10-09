@@ -19,6 +19,10 @@ def apply_options(path: str | Path | None = None) -> bool:
     os.environ["HELPER_SNAPSHOT_ENABLED"] = "true" if opts.get("helper_snapshot_enabled") else ""
     os.environ["HELPER_SNAPSHOT_CRON"] = opts.get("helper_snapshot_cron") or "5 */6 * * *"
     os.environ["HELPER_SNAPSHOT_ENTITIES"] = "\n".join(opts.get("helper_snapshot_entities") or [])
+    os.environ["WEATHER_ENTITIES"] = "\n".join(opts.get("weather_entities") or [])
+    os.environ["WEATHER_CRON"] = opts.get("weather_cron") or "10 * * * *"
+    os.environ["WEATHER_HOURLY_HORIZON_HOURS"] = str(opts.get("weather_hourly_horizon_hours") or 72)
+    os.environ.setdefault("WEATHER_DB", "/data/weather_archive.sqlite3")
     os.environ["GATEWAY_API_KEY"] = opts.get("api_key") or ""
     os.environ["GATEWAY_AS_OF"] = opts.get("as_of_override") or ""
     os.environ["METRIC_CATALOG_CRON"] = opts["metric_catalog_cron"]
