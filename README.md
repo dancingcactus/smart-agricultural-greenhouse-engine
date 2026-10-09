@@ -46,3 +46,24 @@ token from the Supervisor; no long-lived token is needed.
 - `vm_status`: `ok` (numeric data), `string_only`, `missing` (see `vm_reason`: `disabled`,
   `no_state`, `non_numeric`, `not_exported` — only the last needs attention) or `orphan`.
   `/catalog/status` returns counts by status, reason and domain, and lists the orphans.
+
+## Read API (for the agent side)
+
+All routes are `GET` (the only `POST` refreshes the metric catalog). Set an `api_key` in the add-on
+options and send it as `X-Gateway-Key`; `/health` stays open. Optional headers: `X-As-Of` (unix
+seconds or RFC3339) and `X-Caller` (which tool is calling, for the log).
+
+- **As-of.** With `X-As-Of` (or the add-on option `as_of_override`, which callers cannot loosen),
+  every query end/time is clipped to that moment. Live-only endpoints (`/ha/states`, `/ha/registry/*`,
+  `/ha/services`) answer 409 instead, because they would reveal the present. Traces after the
+  as-of time are hidden.
+- **VictoriaMetrics**: `/vm/query`, `/vm/query_range`, `/vm/series`, `/vm/labels`,
+  `/vm/label/{name}/values`. PromQL containing `@`, negative or non-literal `offset`, or negative
+  lookback windows is rejected (always, so tools behave the same live and in replays). Only known
+  parameters are forwarded.
+- **Home Assistant**: `/ha/states[/{id}]`, `/ha/history`, `/ha/logbook`, `/ha/registry/{entity|device|area|label}`,
+  `/ha/services`, `/ha/traces[/{automation_id}/{run_id}]`. Token-like attributes and `?token=` URLs are
+  redacted from responses.
+- **Call log**: every request, including refused ones, is appended to `/data/calls.jsonl`
+  (route, as-of, caller, status, latency; query strings with secrets redacted). `/calls/summary` shows
+  which resources are used and which calls were refused.

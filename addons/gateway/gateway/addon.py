@@ -15,6 +15,8 @@ def apply_options(path: str | Path | None = None) -> bool:
     os.environ["VM_URL"] = opts["vm_url"]
     os.environ["VM_USERNAME"] = opts.get("vm_username") or ""
     os.environ["VM_PASSWORD"] = opts.get("vm_password") or ""
+    os.environ["GATEWAY_API_KEY"] = opts.get("api_key") or ""
+    os.environ["GATEWAY_AS_OF"] = opts.get("as_of_override") or ""
     os.environ["METRIC_CATALOG_CRON"] = opts["metric_catalog_cron"]
     os.environ["CATALOG_LOOKBACK_DAYS"] = str(opts["metric_catalog_lookback_days"])
     os.environ.setdefault("CATALOG_DB", "/data/metric_catalog.sqlite3")

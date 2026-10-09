@@ -19,8 +19,11 @@ ALLOWED_WS_COMMANDS = frozenset(
         "config/device_registry/list",
         "config/area_registry/list",
         "config/label_registry/list",
+        "trace/list",
+        "trace/get",
     }
 )
+TRACE_DOMAINS = frozenset({"automation"})
 
 
 class HAClient:
@@ -53,8 +56,14 @@ class HAClient:
         return self.get("/states")
 
     def ws_list(self, command: str) -> list[dict]:
+        return self.ws_call(command)
+
+    def ws_call(self, command: str, **params: Any) -> Any:
+        """Run one allowlisted read-only websocket command (registry lists, automation traces)."""
         if command not in ALLOWED_WS_COMMANDS:
             raise PermissionError(f"websocket command not allowed: {command}")
+        if command.startswith("trace/") and params.get("domain") not in TRACE_DOMAINS:
+            raise PermissionError("traces are only available for automations")
         scheme_swapped = self.base_url.replace("http", "ws", 1)
         # Supervisor proxy serves /core/websocket; a direct HA URL serves /api/websocket.
         ws_url = scheme_swapped + ("/websocket" if self.base_url.endswith("/core") else "/api/websocket")
@@ -63,7 +72,7 @@ class HAClient:
             ws.send(json.dumps({"type": "auth", "access_token": self._token}))
             if json.loads(ws.recv()).get("type") != "auth_ok":
                 raise PermissionError("Home Assistant websocket auth failed")
-            ws.send(json.dumps({"id": 1, "type": command}))
+            ws.send(json.dumps({"id": 1, "type": command, **params}))
             reply = json.loads(ws.recv())
         if not reply.get("success"):
             raise RuntimeError(f"{command} failed: {reply.get('error')}")
