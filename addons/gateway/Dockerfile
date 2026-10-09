@@ -5,4 +5,6 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY gateway ./gateway
 RUN pip install --no-cache-dir --break-system-packages .
-CMD ["python3", "-m", "uvicorn", "gateway.main:app", "--host", "0.0.0.0", "--port", "8099"]
+COPY run.sh /run.sh
+RUN chmod a+x /run.sh
+CMD ["/run.sh"]

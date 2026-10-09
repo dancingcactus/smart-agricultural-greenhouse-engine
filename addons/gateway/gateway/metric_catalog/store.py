@@ -184,3 +184,8 @@ def export(conn: sqlite3.Connection, out_dir: str | Path) -> list[Path]:
 
 
 
+
+
+def latest_run_info(conn: sqlite3.Connection) -> dict | None:
+    row = conn.execute("SELECT * FROM runs ORDER BY run_id DESC LIMIT 1").fetchone()
+    return dict(row) if row else None

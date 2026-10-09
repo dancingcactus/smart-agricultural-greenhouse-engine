@@ -47,3 +47,12 @@ def config_from_env() -> dict:
         "lookback_days": int(os.environ.get("CATALOG_LOOKBACK_DAYS", "30")),
         "vm_url": os.environ.get("VM_URL", "http://localhost:8428"),
     }
+
+
+def run_from_env() -> dict:
+    """Entry point for the scheduler: configuration comes from the environment."""
+    from .vm_match import VMClient
+
+    cfg = config_from_env()
+    return run_once(HAClient.from_env(), VMClient(cfg["vm_url"]), cfg["db_path"], cfg["out_dir"],
+                    cfg["lookback_days"])
