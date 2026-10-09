@@ -12,6 +12,7 @@ Home Assistant.
 
 from __future__ import annotations
 
+import json
 import logging
 import math
 import time
@@ -45,35 +46,46 @@ def numeric_value(domain: str, state: str) -> float | None:
     return value if math.isfinite(value) else None
 
 
-def series_identity(entity_id: str, unit: str, known: dict | None) -> tuple[str, dict[str, str], str]:
-    """(measurement, tags, source) for a helper.
+def common_tags(conn, min_share: float = 0.8) -> dict[str, str]:
+    """Extra tags (beyond entity_id/domain) that nearly every numeric series carries, e.g. db.
 
-    Prefer the series Home Assistant already wrote, copied exactly. Otherwise follow the
-    InfluxDB integration's convention: measurement is the unit if there is one, else the entity id.
+    Home Assistant adds these to every write. Using the shared set, and ignoring one-off tags that
+    only an old series has, makes a new series land where Home Assistant's next write will.
     """
-    domain, object_id = entity_id.split(".", 1)
-    if known:
-        return known["metric"][: -len("_value")], dict(known["labels"]), "existing series"
-    return unit or entity_id, {"domain": domain, "entity_id": object_id}, "convention"
+    run_id = store.latest_run(conn)
+    rows = conn.execute("SELECT labels FROM series WHERE run_id=? AND kind='value'", (run_id,)).fetchall() \
+        if run_id is not None else []
+    counts: dict[tuple[str, str], int] = {}
+    for row in rows:
+        for key, val in json.loads(row["labels"]).items():
+            if key not in ("entity_id", "entity", "domain"):
+                counts[(key, val)] = counts.get((key, val), 0) + 1
+    return {k: v for (k, v), n in counts.items() if rows and n / len(rows) >= min_share}
 
 
-def _known_series(conn, entity_id: str) -> dict | None:
-    if conn is None:
-        return None
-    entity = store.get_entity(conn, entity_id)
-    candidates = [s for s in (entity or {}).get("series", [])
-                  if s["kind"] == "value" and s["metric"].endswith("_value")]
-    return max(candidates, key=lambda s: s["last_seen"] or 0, default=None)
+def _existing_metrics(conn, entity_id: str) -> set[str]:
+    run_id = store.latest_run(conn)
+    rows = conn.execute("SELECT metric FROM series WHERE run_id=? AND entity_id=? AND kind='value'",
+                        (run_id, entity_id)).fetchall()
+    return {r["metric"] for r in rows}
 
 
 def plan(states: list[dict], patterns: list[str], conn=None, now: float | None = None) -> dict:
-    """What would be written: line-protocol lines plus anything skipped and why."""
+    """What would be written: lines, helpers skipped (and why), and how each line was checked.
+
+    Identity follows the InfluxDB integration's convention: the measurement is the unit if there is
+    one, else the entity id; tags are domain, entity_id and whatever extra tags the catalog shows
+    nearly every series carries. If the catalog already holds a numeric series for the helper and the
+    name we would write is not among them, the helper is skipped rather than splitting its history.
+    """
     now = int(now or time.time())
+    extras = common_tags(conn) if conn is not None else {}
     lines: list[str] = []
     skipped: list[dict] = []
+    checks: list[dict] = []
     for st in states:
         eid = st["entity_id"]
-        domain = eid.split(".", 1)[0]
+        domain, object_id = eid.split(".", 1)
         if domain not in SUPPORTED_DOMAINS or not any(fnmatchcase(eid, p) for p in patterns if p.strip()):
             continue
         value = numeric_value(domain, st.get("state"))
@@ -81,11 +93,21 @@ def plan(states: list[dict], patterns: list[str], conn=None, now: float | None =
             skipped.append({"entity_id": eid, "reason": f"state {st.get('state')!r} is not numeric"})
             continue
         unit = (st.get("attributes") or {}).get("unit_of_measurement") or ""
-        measurement, tags, source = series_identity(eid, unit, _known_series(conn, eid))
+        measurement = unit or eid
+        metric = f"{measurement}_value"
+        existing = _existing_metrics(conn, eid) if conn is not None else set()
+        if existing and metric not in existing:
+            skipped.append({"entity_id": eid, "reason": f"would write {metric!r} but the catalog shows "
+                            f"{sorted(existing)}; not writing so history is not split"})
+            checks.append({"entity_id": eid, "metric": metric, "check": "DIFFERS", "existing": sorted(existing)})
+            continue
+        checks.append({"entity_id": eid, "metric": metric,
+                       "check": "matches existing series" if existing else "new series"})
+        tags = {"domain": domain, "entity_id": object_id} | extras
         tag_text = ",".join(f"{_esc_tag(k)}={_esc_tag(v)}" for k, v in sorted(tags.items()))
         lines.append(f"{_esc_measurement(measurement)},{tag_text} value={value!r} {now}")
-        log.debug("%s -> %s (%s)", eid, measurement, source)
-    return {"lines": lines, "skipped": skipped}
+    return {"lines": lines, "skipped": skipped, "checks": checks, "common_tags": extras,
+            "catalog_available": conn is not None and store.latest_run(conn) is not None}
 
 
 def write_lines(vm: httpx.Client, lines: list[str]) -> None:
@@ -111,11 +133,14 @@ def run(ha, vm: httpx.Client, patterns: list[str], db_path: str | None = None, i
         if ingest_mode not in (None, "influxdb"):
             raise RuntimeError(f"helper snapshots need InfluxDB-style ingest; catalog says {ingest_mode!r}")
         result = plan(ha.states(), patterns, conn)
+        if conn is not None and not result["catalog_available"] and result["lines"]:
+            raise RuntimeError("no catalog run yet: run the catalog first so the helper series can be "
+                               "written with the same tags Home Assistant uses")
     finally:
         if conn is not None:
             conn.close()
     write_lines(vm, result["lines"])
-    return {"written": len(result["lines"]), "skipped": result["skipped"]}
+    return {"written": len(result["lines"]), "skipped": result["skipped"], "common_tags": result["common_tags"]}
 
 
 def run_from_env() -> dict:

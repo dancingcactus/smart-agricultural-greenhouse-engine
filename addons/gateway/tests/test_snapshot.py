@@ -61,15 +61,60 @@ def test_escaping_special_characters():
     assert line.startswith("Signal\\ %\\,\\ rel=x,domain=input_number")  # '=' only needs escaping in tags
 
 
-def test_existing_series_are_copied_exactly(tmp_path):
+def _catalog(tmp_path, extra_series=()):
+    """A catalog shaped like the real one: most series carry db=homeassistant."""
     conn = store.connect(tmp_path / "c.sqlite3")
-    custom = {"entity_id": "hot_alarm_temp", "domain": "input_number", "site": "gh1"}
-    store.save_run(conn, "influxdb", {"input_number.hot_alarm_temp": EntityRecord("input_number.hot_alarm_temp")},
-                   [SeriesRecord("input_number.hot_alarm_temp", "degF_value", custom, "{}", last_seen=5, field="value", kind="value"),
-                    SeriesRecord("input_number.hot_alarm_temp", "degF_friendly_name_str", custom, "{}", field="friendly_name_str",
-                                 kind="attribute_str")])
-    line = hs.plan([st("input_number.hot_alarm_temp", "80", "°F")], ["*"], conn, now=NOW)["lines"][0]
-    assert line == f"degF,domain=input_number,entity_id=hot_alarm_temp,site=gh1 value=80.0 {NOW}"  # not the convention
+    series, ents = [], {}
+    for i in range(9):
+        eid = f"sensor.s{i}"
+        ents[eid] = EntityRecord(eid)
+        series.append(SeriesRecord(eid, "W_value", {"entity_id": f"s{i}", "domain": "sensor", "db": "homeassistant"},
+                                   "{}", last_seen=5, field="value", kind="value"))
+    for eid, metric, labels in extra_series:
+        ents.setdefault(eid, EntityRecord(eid))
+        series.append(SeriesRecord(eid, metric, labels, "{}", last_seen=5, field="value", kind="value"))
+    store.save_run(conn, "influxdb", ents, series)
+    return conn
+
+
+def test_shared_tags_are_added_and_one_off_tags_dropped(tmp_path):
+    odd = ("input_number.gh_hyst", "°F_value",
+           {"entity_id": "gh_hyst", "domain": "input_number", "db": "homeassistant", "friendly_name": "GH Hyst"})
+    conn = _catalog(tmp_path, [odd])
+    assert store.latest_run(conn) is not None
+    assert hs.common_tags(conn) == {"db": "homeassistant"}  # friendly_name is on 1 of 10 series: dropped
+    result = hs.plan([st("input_number.gh_hyst", "1", "°F"), st("input_number.new_one", "2", "kPa")],
+                     ["input_number.*"], conn, now=NOW)
+    assert result["lines"] == [
+        f"°F,db=homeassistant,domain=input_number,entity_id=gh_hyst value=1.0 {NOW}",
+        f"kPa,db=homeassistant,domain=input_number,entity_id=new_one value=2.0 {NOW}",  # no series yet: gets db too
+    ]
+    checks = {c["entity_id"]: c["check"] for c in result["checks"]}
+    assert checks == {"input_number.gh_hyst": "matches existing series", "input_number.new_one": "new series"}
+
+
+def test_helper_is_skipped_when_its_name_would_differ_from_existing_series(tmp_path):
+    conn = _catalog(tmp_path, [("input_number.x", "degF_value", {"entity_id": "x", "domain": "input_number",
+                                                                   "db": "homeassistant"})])
+    result = hs.plan([st("input_number.x", "1", "°F")], ["*"], conn, now=NOW)
+    assert result["lines"] == []
+    assert "history is not split" in result["skipped"][0]["reason"]
+    assert result["checks"][0]["check"] == "DIFFERS"
+
+
+def test_run_refuses_without_a_catalog(tmp_path, vm):
+    router, client = vm
+    with pytest.raises(RuntimeError, match="run the catalog first"):
+        hs.run(HA(), client, ["input_number.humidity"], str(tmp_path / "empty.sqlite3"))
+    assert router.calls.call_count == 0
+
+
+def test_run_with_a_catalog_writes_the_shared_tags(tmp_path, vm):
+    router, client = vm
+    _catalog(tmp_path).close()
+    out = hs.run(HA(), client, ["input_number.humidity"], str(tmp_path / "c.sqlite3"))
+    assert out["common_tags"] == {"db": "homeassistant"}
+    assert router.calls.last.request.content.decode().startswith("%,db=homeassistant,domain=input_number")
 
 
 @pytest.fixture

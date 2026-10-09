@@ -93,8 +93,11 @@ Alternative to the mirror sensors above, and the one that keeps Home Assistant c
 `helper_snapshot_enabled` on, the gateway writes each listed helper's current value to
 VictoriaMetrics every `helper_snapshot_cron` (default every 6 hours, and at start-up), as line
 protocol on `/write`, under the series Home Assistant's InfluxDB integration already uses:
-the same measurement and tags are copied from the existing series when there is one, otherwise the
-integration's convention is followed (measurement = unit, or the entity id when there is no unit).
+the measurement follows the integration's convention (the unit, or the entity id when there is no unit)
+and the tags are `domain`, `entity_id` plus any extra tag nearly every series carries (such as
+`db=homeassistant`, which VictoriaMetrics adds for Home Assistant's database). If the catalog already
+holds a series for the helper under a different name, the helper is skipped instead of splitting its
+history. A catalog run must exist first.
 
 This is the gateway's only write path. It is off by default, writes only to VictoriaMetrics, only
 `input_number` and `input_boolean` entities matching `helper_snapshot_entities`, and nothing in the
