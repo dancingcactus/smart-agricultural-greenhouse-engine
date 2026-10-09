@@ -10,14 +10,14 @@ from gateway.metric_catalog.models import EntityRecord, SeriesRecord
 @pytest.mark.parametrize(
     ("metric", "entity_id", "unit", "expected"),
     [
-        ("W_value", "sensor.blackplug2_blackplug2_watts", "W", ("value", "value")),
-        ("°F_value", "sensor.cooler_temperature_difference", "°F", ("value", "value")),
-        ("W_device_class_str", "sensor.blackplug2_blackplug2_watts", "W", ("device_class_str", "attribute_str")),
-        ("°F_friendly_name_str", "sensor.cooler_temperature_difference", "°F", ("friendly_name_str", "attribute_str")),
-        ("automation.battery_reminders_current", "automation.battery_reminders", "", ("current", "attribute_num")),
-        ("automation.battery_reminders_last_triggered_str", "automation.battery_reminders", "",
+        ("W_value", "sensor.plug_a_power", "W", ("value", "value")),
+        ("°F_value", "sensor.zone_a_temperature", "°F", ("value", "value")),
+        ("W_device_class_str", "sensor.plug_a_power", "W", ("device_class_str", "attribute_str")),
+        ("°F_friendly_name_str", "sensor.zone_a_temperature", "°F", ("friendly_name_str", "attribute_str")),
+        ("automation.example_reminder_current", "automation.example_reminder", "", ("current", "attribute_num")),
+        ("automation.example_reminder_last_triggered_str", "automation.example_reminder", "",
          ("last_triggered_str", "attribute_str")),
-        ("sensor.backup_backup_manager_state_state", "sensor.backup_backup_manager_state", "", ("state", "state")),
+        ("sensor.example_status_state", "sensor.example_status", "", ("state", "state")),
     ],
 )
 def test_field_and_kind_on_real_names(metric, entity_id, unit, expected):
@@ -30,8 +30,8 @@ def test_prometheus_series_are_values():
 
 def test_missing_reasons():
     assert missing_reason(EntityRecord("sensor.a", disabled=True)) == "disabled"
-    assert missing_reason(EntityRecord("sensor.advanced_ssh_cpu", in_registry=True)) == "no_state"
-    assert missing_reason(EntityRecord("sensor.next_backup", has_state=True, device_class="timestamp")) == "non_numeric"
+    assert missing_reason(EntityRecord("sensor.example_addon_cpu", in_registry=True)) == "no_state"
+    assert missing_reason(EntityRecord("sensor.example_next_run", has_state=True, device_class="timestamp")) == "non_numeric"
     assert missing_reason(EntityRecord("button.restart", has_state=True)) == "non_numeric"
     assert missing_reason(EntityRecord("sensor.temp", has_state=True, device_class="temperature")) == "not_exported"
 
