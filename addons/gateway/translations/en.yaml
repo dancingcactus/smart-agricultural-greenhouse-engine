@@ -1,0 +1,44 @@
+configuration:
+  vm_url:
+    name: VictoriaMetrics URL
+    description: >-
+      Address of VictoriaMetrics as reachable from this add-on, for example
+      http://a0d7b954-victoriametrics:8428 (another add-on) or http://192.168.1.20:8428
+      (another machine). Not localhost: that is this add-on itself.
+  vm_username:
+    name: VictoriaMetrics username
+    description: Only needed if VictoriaMetrics has basic authentication turned on.
+  vm_password:
+    name: VictoriaMetrics password
+    description: Password for the username above.
+  api_key:
+    name: Gateway API key
+    description: >-
+      If set, every request to this add-on's API must send it in an X-Gateway-Key header.
+      Recommended whenever port 8099 is enabled.
+  as_of_override:
+    name: Freeze data at a time (testing only)
+    description: >-
+      Leave empty for normal use. Set a time (2026-10-01T12:00:00Z or unix seconds) to make every
+      query behave as if that were the present. Callers can only make it earlier, never later.
+  metric_catalog_cron:
+    name: Catalog schedule
+    description: >-
+      When to rebuild the entity-to-metric catalog, as a cron expression
+      (minute hour day-of-month month day-of-week). Default 15 3 * * * is daily at 03:15.
+  metric_catalog_lookback_days:
+    name: Catalog lookback (days)
+    description: >-
+      How far back to look for data when deciding whether an entity is recorded, 1 to 1100.
+      Use a long window: settings that rarely change leave no recent samples.
+  catalog_ignore:
+    name: Ignore list
+    description: >-
+      Entity IDs to leave out of the "missing" counts, one pattern per line. Each pattern must
+      match the whole entity ID, including the domain, and is case-sensitive. * matches any
+      characters (including dots and nothing), ? matches exactly one character, [abc] matches one
+      of the listed characters and [!abc] anything else. These are wildcards, not regular
+      expressions. Examples: sensor.small_screen_* (all that device's sensors),
+      *_battery (every battery sensor), sensor.plant_sensor_p?_moisture (P1 and P2),
+      light.small_screen_display_backlight (one exact entity). Ignored entities stay
+      searchable; they just stop counting as problems.

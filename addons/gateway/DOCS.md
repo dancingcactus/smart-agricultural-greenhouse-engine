@@ -1,0 +1,50 @@
+# Greenhouse Gateway
+
+A read-only bridge between Home Assistant and the Greenhouse AI Operator. It never changes anything
+in Home Assistant. It records which entities are stored in VictoriaMetrics (and under what metric
+names) and serves read-only history to the agent side.
+
+## Configuration
+
+| Option | What it does |
+| --- | --- |
+| `vm_url` | VictoriaMetrics address **as seen from this add-on**, e.g. `http://a0d7b954-victoriametrics:8428`. `localhost` means this add-on itself. |
+| `vm_username`, `vm_password` | Only if VictoriaMetrics uses basic authentication. |
+| `api_key` | If set, requests must send it as `X-Gateway-Key`. Recommended whenever port 8099 is enabled. |
+| `as_of_override` | Testing only: treat this time as "now" for every query. Callers can only tighten it. |
+| `metric_catalog_cron` | When the catalog is rebuilt (cron: minute hour day month weekday). Default daily 03:15. |
+| `metric_catalog_lookback_days` | How far back to look for data, 1-1100. Default 365. |
+| `catalog_ignore` | Entities to leave out of the "missing" counts. See below. |
+
+## The ignore list
+
+One pattern per line (the *+* button in the UI adds a line). A pattern is matched against the
+**whole entity ID**, so it must include the domain (`sensor.`, `light.`, ...). Matching is
+case-sensitive and uses wildcards, **not** regular expressions:
+
+| Wildcard | Matches |
+| --- | --- |
+| `*` | any run of characters, including none and including dots |
+| `?` | exactly one character |
+| `[abc]` | one of `a`, `b` or `c` |
+| `[!abc]` | any one character except `a`, `b`, `c` |
+
+Examples:
+
+| Pattern | Ignores |
+| --- | --- |
+| `sensor.small_screen_*` | every sensor whose ID starts with `sensor.small_screen_` |
+| `*_battery` | every entity whose ID ends in `_battery` |
+| `sensor.plant_sensor_p?_moisture` | `..._p1_moisture` and `..._p2_moisture` |
+| `light.small_screen_display_backlight` | exactly that one entity |
+| `small_screen_*` | **nothing**: it has no domain, so it can never match |
+
+Ignored entities are marked `ignored`. They are still searchable and exported; they just stop
+counting as `missing`. This also applies to orphans (data whose entity no longer exists).
+Blank lines are skipped, and surrounding spaces are trimmed.
+
+## Endpoints
+
+See the project README for the full API (catalog, read-only Home Assistant and VictoriaMetrics
+routes, call log). The API port (8099) is off by default; enable it on the Network tab only when
+you need it, and set `api_key` first.

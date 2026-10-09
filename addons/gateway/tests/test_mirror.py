@@ -164,3 +164,34 @@ def test_addon_config_is_valid_and_options_match_schema():
     assert set(cfg["options"]) <= set(cfg["schema"])
     assert cfg["schema"]["catalog_ignore"] == ["str"]
     assert cfg["init"] is False and cfg["homeassistant_api"] is True
+
+
+@pytest.mark.parametrize(("pattern", "entity", "matches"), [
+    ("sensor.small_screen_*", "sensor.small_screen_uptime", True),
+    ("sensor.small_screen_*", "binary_sensor.small_screen_x", False),  # whole ID must match
+    ("*_battery", "sensor.meter_battery", True),
+    ("sensor.plant_sensor_p?_moisture", "sensor.plant_sensor_p2_moisture", True),
+    ("sensor.plant_sensor_p?_moisture", "sensor.plant_sensor_p12_moisture", False),
+    ("sensor.p[12]_dli", "sensor.p2_dli", True),
+    ("sensor.p[!1]_dli", "sensor.p1_dli", False),
+    ("light.small_screen_display_backlight", "light.small_screen_display_backlight", True),
+    ("small_screen_*", "sensor.small_screen_uptime", False),  # no domain: never matches
+    ("Sensor.Small_*", "sensor.small_screen_uptime", False),  # case-sensitive
+    ("sensor.a.b", "sensor.axb", False),  # dots are literal, not regex
+])
+def test_documented_ignore_syntax(pattern, entity, matches):
+    ents = {entity: EntityRecord(entity, has_state=True)}
+    with respx.mock(base_url="http://vm", assert_all_called=False) as router:
+        router.get("/api/v1/labels").respond(json={"status": "success", "data": ["entity_id"]})
+        router.get("/api/v1/series").respond(json={"status": "success", "data": []})
+        match_series(VMClient("http://vm"), ents, now=NOW, ignore=[pattern])
+    assert (ents[entity].vm_status == "ignored") is matches
+
+
+def test_every_option_is_documented_in_the_ui():
+    cfg = yaml.safe_load(Path("config.yaml").read_text())
+    ui = yaml.safe_load(Path("translations/en.yaml").read_text())["configuration"]
+    assert set(ui) == set(cfg["schema"])
+    assert all(v["name"] and v["description"] for v in ui.values())
+    docs = Path("DOCS.md").read_text()
+    assert all(f"`{opt}`" in docs for opt in cfg["schema"] if opt != "vm_password") and "`vm_password`" in docs
