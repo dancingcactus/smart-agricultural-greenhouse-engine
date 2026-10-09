@@ -35,9 +35,15 @@ def collect_entities(ha: HAClient) -> dict[str, EntityRecord]:
         attrs = st.get("attributes", {})
         rec = entities.setdefault(st["entity_id"], EntityRecord(entity_id=st["entity_id"]))
         rec.has_state = True
+        source = attrs.get("source_entity", "")
+        if st["entity_id"].endswith("_snapshot") and isinstance(source, str) and "." in source:
+            rec.mirror_of = source
         rec.friendly_name = attrs.get("friendly_name", "")
         rec.unit = attrs.get("unit_of_measurement", "") or ""
         rec.state_class = attrs.get("state_class", "") or ""
         rec.device_class = rec.device_class or attrs.get("device_class", "") or ""
         rec.icon = rec.icon or attrs.get("icon", "") or ""
+    for rec in list(entities.values()):
+        if rec.mirror_of in entities:
+            entities[rec.mirror_of].mirrored_by = rec.entity_id
     return entities

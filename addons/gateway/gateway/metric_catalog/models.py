@@ -19,7 +19,9 @@ class EntityRecord:
     disabled: bool = False
     in_registry: bool = False
     has_state: bool = False
-    vm_status: str = "missing"  # ok | string_only | missing | orphan
+    mirror_of: str = ""  # for a snapshot sensor: the helper it copies
+    mirrored_by: str = ""  # for a helper: the snapshot sensor that records it
+    vm_status: str = "missing"  # ok | string_only | mirrored | missing | orphan | ignored
     vm_reason: str = ""  # for missing: disabled | no_state | non_numeric | not_exported
 
 

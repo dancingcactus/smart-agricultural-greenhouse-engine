@@ -67,3 +67,22 @@ seconds or RFC3339) and `X-Caller` (which tool is calling, for the log).
 - **Call log**: every request, including refused ones, is appended to `/data/calls.jsonl`
   (route, as-of, caller, status, latency; query strings with secrets redacted). `/calls/summary` shows
   which resources are used and which calls were refused.
+
+## Ignore list, long lookback and helper mirrors
+
+- **Ignore list.** Add globs to the `catalog_ignore` option (e.g. `sensor.small_screen_*`). Matching
+  entities are marked `ignored`: still searchable, but left out of the missing counts. It also
+  applies to orphans.
+- **Lookback** defaults to 365 days (max 1100), because step-like data such as setpoints may not
+  change for months.
+- **Helper mirrors.** The InfluxDB integration only writes on change, so a setpoint nobody touches
+  stops producing samples and can age out of VictoriaMetrics retention. Generate template sensors
+  that re-record helpers on a timer:
+  ```
+  curl 'http://homeassistant.local:8099/catalog/mirror.yaml?domain=input_number&only=stale&hours=6'
+  ```
+  (`only=all` for every helper; `hours` is 1, 2, 3, 4, 6, 8, 12 or 24.) Review the output, paste it
+  under `template:` in `configuration.yaml`, run a config check and reload. Needs Home Assistant
+  2024.10+. Each mirror is `sensor.<helper>_snapshot`; the catalog links it to its helper
+  (`mirror_of` / `mirrored_by`) and shows the helper as `mirrored`. Mirrors carry a `recorded_at`
+  attribute so every run is a change; the matching text series (`recorded_at_str`) is noise.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
+from fnmatch import fnmatchcase
 
 import httpx
 
@@ -84,6 +85,7 @@ def match_series(
     lookback_days: int = 30,
     now: float | None = None,
     history_days: int = 1100,
+    ignore: list[str] | None = None,
 ) -> tuple[str, list[SeriesRecord]]:
     """Return (ingest_mode, series). Mutates entities[*].vm_status and adds orphans."""
     now = now or time.time()
@@ -142,4 +144,15 @@ def match_series(
             ent.vm_status, ent.vm_reason = "string_only", ""
     for eid in sorted(seen - set(entities)):
         entities[eid] = EntityRecord(entity_id=eid, vm_status="orphan")
+
+    # A helper whose own series are absent is covered when its snapshot sensor has data.
+    for ent in entities.values():
+        mirror = entities.get(ent.mirrored_by)
+        if mirror and mirror.vm_status == "ok" and ent.vm_status in ("missing", "string_only"):
+            ent.vm_status, ent.vm_reason = "mirrored", ""
+    # The ignore list wins over everything, so retired devices drop out of the counts.
+    patterns = [p.strip() for p in ignore or [] if p.strip()]
+    for eid, ent in entities.items():
+        if any(fnmatchcase(eid, p) for p in patterns):
+            ent.vm_status, ent.vm_reason = "ignored", ""
     return mode, series

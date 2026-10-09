@@ -4,9 +4,9 @@ import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 
-from gateway.metric_catalog import store
+from gateway.metric_catalog import mirror, store
 from gateway.metric_catalog.runner import run_from_env
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
@@ -44,6 +44,22 @@ def export_csv():
     if not path.is_file():
         raise HTTPException(404, "no export yet; run the catalog first")
     return FileResponse(path, media_type="text/csv")
+
+
+@router.get("/mirror.yaml", response_class=PlainTextResponse)
+def mirror_yaml(only: str = "stale", stale_days: int = 30, hours: int = 6, domain: str | None = None):
+    """Template-sensor YAML that re-records rarely-changing helpers. Review before using."""
+    if only not in ("stale", "all"):
+        raise HTTPException(400, "only must be 'stale' or 'all'")
+    conn = _conn()
+    try:
+        rows = mirror.select_entities(store.list_entities(conn, domain), only, stale_days)
+    finally:
+        conn.close()
+    try:
+        return PlainTextResponse(mirror.mirror_yaml(rows, hours), media_type="text/yaml")
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @router.get("/metrics")

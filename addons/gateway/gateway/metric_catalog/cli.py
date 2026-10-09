@@ -6,7 +6,7 @@ import sys
 
 from gateway.ha_client import HAClient
 
-from . import store
+from . import mirror, store
 from .runner import config_from_env, run_once
 from .vm_match import VMClient
 
@@ -19,18 +19,25 @@ def main(argv: list[str] | None = None) -> int:
     run = sub.add_parser("run", help="collect entities + VM series and store a new catalog run")
     run.add_argument("--out-dir", default=cfg["out_dir"])
     run.add_argument("--lookback-days", type=int, default=cfg["lookback_days"])
+    run.add_argument("--ignore", action="append", default=cfg["ignore"],
+                     help="glob of entity ids to ignore, e.g. sensor.old_device_* (repeatable)")
     run.add_argument("--git-commit", action="store_true")
     s = sub.add_parser("search", help="full-text search the latest catalog")
     s.add_argument("query")
     s.add_argument("--limit", type=int, default=25)
     sub.add_parser("changes", help="diff the latest run against the previous one")
+    m = sub.add_parser("mirror-yaml", help="template sensors that re-record rarely-changing helpers")
+    m.add_argument("--only", choices=("stale", "all"), default="stale")
+    m.add_argument("--stale-days", type=int, default=30)
+    m.add_argument("--hours", type=int, default=6)
+    m.add_argument("--domain", default=None, help="limit to one domain, e.g. input_number")
     e = sub.add_parser("export", help="write JSONL + CSV from the latest run")
     e.add_argument("out_dir")
     args = p.parse_args(argv)
 
     if args.cmd == "run":
         result = run_once(HAClient.from_env(), VMClient(cfg["vm_url"], username=cfg["vm_username"], password=cfg["vm_password"]), args.db, args.out_dir,
-                          args.lookback_days, args.git_commit)
+                          args.lookback_days, args.git_commit, ignore=args.ignore)
         print(json.dumps(result))
         return 0
     conn = store.connect(args.db)
@@ -40,6 +47,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f'{ent["entity_id"]:45} {ent["friendly_name"] or ent["name"]:30} {metrics}')
     elif args.cmd == "changes":
         print(json.dumps(store.diff_runs(conn), indent=2))
+    elif args.cmd == "mirror-yaml":
+        rows = mirror.select_entities(store.list_entities(conn, args.domain), args.only, args.stale_days)
+        print(mirror.mirror_yaml(rows, args.hours), end="")
     elif args.cmd == "export":
         print("\n".join(str(x) for x in store.export(conn, args.out_dir)))
     return 0

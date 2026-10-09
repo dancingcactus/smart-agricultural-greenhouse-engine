@@ -1,5 +1,5 @@
 name: Greenhouse Gateway
-version: "0.3.0"
+version: "0.4.0"
 slug: greenhouse_gateway
 description: Read-only gateway between Home Assistant and the Greenhouse AI Operator
 url: https://github.com/dancingcactus/smart-agricultural-greenhouse-engine
@@ -21,7 +21,8 @@ options:
   api_key: ""
   as_of_override: ""
   metric_catalog_cron: "15 3 * * *"
-  metric_catalog_lookback_days: 30
+  metric_catalog_lookback_days: 365
+  catalog_ignore: []
 schema:
   vm_url: str
   vm_username: str?
@@ -29,4 +30,6 @@ schema:
   api_key: password?
   as_of_override: str?
   metric_catalog_cron: str
-  metric_catalog_lookback_days: int(1,365)
+  metric_catalog_lookback_days: int(1,1100)
+  catalog_ignore:
+    - str
