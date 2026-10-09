@@ -12,9 +12,9 @@ from .vm_match import VMClient, match_series
 
 
 def run_once(ha: HAClient, vm: VMClient, db_path: str | Path, out_dir: str | Path | None = None,
-             lookback_days: int = 30, git_commit: bool = False) -> dict:
+             lookback_days: int = 30, git_commit: bool = False, history_days: int = 1100) -> dict:
     entities = collect_entities(ha)
-    mode, series = match_series(vm, entities, lookback_days)
+    mode, series = match_series(vm, entities, lookback_days, history_days=history_days)
     conn = store.connect(db_path)
     try:
         run_id = store.save_run(conn, mode, entities, series)
@@ -45,6 +45,7 @@ def config_from_env() -> dict:
         "db_path": os.environ.get("CATALOG_DB", "metric_catalog.sqlite3"),
         "out_dir": os.environ.get("CATALOG_OUT_DIR"),
         "lookback_days": int(os.environ.get("CATALOG_LOOKBACK_DAYS", "30")),
+        "history_days": int(os.environ.get("CATALOG_HISTORY_DAYS", "1100")),
         "vm_url": os.environ.get("VM_URL", "http://localhost:8428"),
         "vm_username": os.environ.get("VM_USERNAME", ""),
         "vm_password": os.environ.get("VM_PASSWORD", ""),
@@ -55,7 +56,7 @@ def run_from_env() -> dict:
     """Entry point for the scheduler: configuration comes from the environment."""
     cfg = config_from_env()
     return run_once(HAClient.from_env(), _vm_client(cfg), cfg["db_path"], cfg["out_dir"],
-                    cfg["lookback_days"])
+                    cfg["lookback_days"], history_days=cfg["history_days"])
 
 
 def _vm_client(cfg: dict) -> VMClient:

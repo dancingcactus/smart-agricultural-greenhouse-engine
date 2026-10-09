@@ -18,7 +18,9 @@ class EntityRecord:
     state_class: str = ""
     disabled: bool = False
     in_registry: bool = False
-    vm_status: str = "missing"  # ok | missing | orphan
+    has_state: bool = False
+    vm_status: str = "missing"  # ok | string_only | missing | orphan
+    vm_reason: str = ""  # for missing: disabled | no_state | non_numeric | not_exported
 
 
 @dataclass
@@ -31,3 +33,6 @@ class SeriesRecord:
     last_seen: float | None = None
     samples: int | None = None
     avg_interval_s: float | None = None
+    field: str = ""  # InfluxDB field name, e.g. value, device_class_str
+    kind: str = ""  # value | attribute_num | attribute_str | state
+    history_first_seen: float | None = None  # earliest sample over the long history window

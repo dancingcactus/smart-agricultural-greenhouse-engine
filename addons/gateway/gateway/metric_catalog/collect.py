@@ -34,6 +34,7 @@ def collect_entities(ha: HAClient) -> dict[str, EntityRecord]:
     for st in ha.states():
         attrs = st.get("attributes", {})
         rec = entities.setdefault(st["entity_id"], EntityRecord(entity_id=st["entity_id"]))
+        rec.has_state = True
         rec.friendly_name = attrs.get("friendly_name", "")
         rec.unit = attrs.get("unit_of_measurement", "") or ""
         rec.state_class = attrs.get("state_class", "") or ""

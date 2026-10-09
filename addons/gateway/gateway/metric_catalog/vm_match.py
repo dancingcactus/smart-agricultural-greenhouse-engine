@@ -7,6 +7,7 @@ from collections import defaultdict
 
 import httpx
 
+from .classify import field_and_kind, missing_reason
 from .models import EntityRecord, SeriesRecord
 
 
@@ -78,7 +79,11 @@ def _stat_map(vm: VMClient, fn: str, metric: str, window_s: int, at: float) -> d
 
 
 def match_series(
-    vm: VMClient, entities: dict[str, EntityRecord], lookback_days: int = 30, now: float | None = None
+    vm: VMClient,
+    entities: dict[str, EntityRecord],
+    lookback_days: int = 30,
+    now: float | None = None,
+    history_days: int = 1100,
 ) -> tuple[str, list[SeriesRecord]]:
     """Return (ingest_mode, series). Mutates entities[*].vm_status and adds orphans."""
     now = now or time.time()
@@ -93,7 +98,9 @@ def match_series(
             continue
         metric = s["__name__"]
         labels = {k: v for k, v in s.items() if k != "__name__"}
-        series.append(SeriesRecord(eid, metric, labels, selector_for(metric, s)))
+        unit = entities[eid].unit if eid in entities else ""
+        field, kind = field_and_kind(metric, eid, unit, mode)
+        series.append(SeriesRecord(eid, metric, labels, selector_for(metric, s), field=field, kind=kind))
 
     window = lookback_days * 86400
     by_metric: dict[str, list[SeriesRecord]] = defaultdict(list)
@@ -110,9 +117,29 @@ def match_series(
             if rec.samples and rec.samples > 1 and rec.first_seen and rec.last_seen:
                 rec.avg_interval_s = (rec.last_seen - rec.first_seen) / (rec.samples - 1)
 
-    seen = {rec.entity_id for rec in series}
+    # Stats above cover only the lookback window; find the true first sample of the numeric series.
+    for metric, recs in by_metric.items():
+        value_recs = [r for r in recs if r.kind == "value"]
+        if not value_recs:
+            continue
+        try:
+            long_firsts = _stat_map(vm, "tfirst_over_time", metric, history_days * 86400, now)
+        except (httpx.HTTPError, RuntimeError):
+            continue  # history is a nicety; don't fail the whole run on a slow long-range query
+        for rec in value_recs:
+            rec.history_first_seen = long_firsts.get(tuple(sorted(rec.labels.items())))
+
+    kinds: dict[str, set[str]] = defaultdict(set)
+    for rec in series:
+        kinds[rec.entity_id].add(rec.kind)
+    seen = set(kinds)
     for eid, ent in entities.items():
-        ent.vm_status = "ok" if eid in seen else "missing"
+        if eid not in seen:
+            ent.vm_status, ent.vm_reason = "missing", missing_reason(ent)
+        elif kinds[eid] & {"value", "attribute_num"}:
+            ent.vm_status, ent.vm_reason = "ok", ""
+        else:
+            ent.vm_status, ent.vm_reason = "string_only", ""
     for eid in sorted(seen - set(entities)):
         entities[eid] = EntityRecord(entity_id=eid, vm_status="orphan")
     return mode, series

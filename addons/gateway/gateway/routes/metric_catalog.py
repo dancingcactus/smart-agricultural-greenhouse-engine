@@ -20,7 +20,11 @@ def _conn():
 def status():
     conn = _conn()
     try:
-        return {"latest_run": store.latest_run_info(conn), "changes": store.diff_runs(conn)}
+        return {
+            "latest_run": store.latest_run_info(conn),
+            "summary": store.summary(conn),
+            "changes": store.diff_runs(conn),
+        }
     finally:
         conn.close()
 

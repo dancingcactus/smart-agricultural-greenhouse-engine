@@ -162,3 +162,32 @@ def test_basic_auth_sent_and_rejection_explained():
         router.get("/api/v1/series").respond(401)
         with pytest.raises(RuntimeError, match="vm_username"):
             VMClient("http://vm").series(0)
+
+
+def test_history_first_seen_and_string_only(tmp_path):
+    ents = {"sensor.zone1_temp": EntityRecord("sensor.zone1_temp", unit="°C", has_state=True)}
+    with respx.mock(base_url="http://vm") as router:
+        router.get("/api/v1/labels").respond(json={"status": "success", "data": ["entity_id"]})
+        router.get("/api/v1/series").respond(json={"status": "success", "data": [
+            {"__name__": "°C_value", "entity_id": "zone1_temp", "domain": "sensor"},
+            {"__name__": "°C_device_class_str", "entity_id": "zone1_temp", "domain": "sensor"},
+        ]})
+
+        def instant(request):
+            q = request.url.params["query"]
+            window = int(q.rsplit("[", 1)[1].rstrip("s])"))
+            fn = q.split("(")[0]
+            value = {"count_over_time": 5, "tlast_over_time": NOW}.get(fn)
+            if fn == "tfirst_over_time":  # long window reaches back further than the lookback
+                value = NOW - window
+            labels = {"entity_id": "zone1_temp", "domain": "sensor"}
+            return httpx.Response(200, json={"status": "success", "data": {"result": [
+                {"metric": labels, "value": [NOW, str(value)]}]}})
+        router.get("/api/v1/query").mock(side_effect=instant)
+        _, series = match_series(VMClient("http://vm"), ents, lookback_days=30, now=NOW, history_days=1000)
+    value = next(s for s in series if s.kind == "value")
+    attr = next(s for s in series if s.kind == "attribute_str")
+    assert value.history_first_seen == NOW - 1000 * 86400  # reaches past the 30-day window
+    assert value.first_seen == NOW - 30 * 86400
+    assert attr.history_first_seen is None
+    assert ents["sensor.zone1_temp"].vm_status == "ok"

@@ -32,3 +32,17 @@ with no HA entity). `avg_interval_s` is (last - first)/(samples - 1), a mean, no
 
 Data lives in `/data` (included in Home Assistant backups). The add-on gets its Home Assistant
 token from the Supervisor; no long-lived token is needed.
+
+## Reading the catalog (InfluxDB ingest)
+
+- Sensors with a unit are stored under the **unit**, not the entity: `W_value`, `°F_value`. Always use
+  the generated `selector` (it pins `entity_id` and `domain`); a bare `°F_value` returns every
+  temperature sensor.
+- `kind` is `value` (the numeric reading), `attribute_num`, `attribute_str` (text attributes such as
+  `friendly_name_str`, ignorable) or `state` (string state of enums and similar).
+- `first_seen`/`samples` cover the lookback window only; `history_first_seen` looks back ~3 years.
+- Setpoints and other write-on-change entities have few samples and a meaningless
+  `avg_interval_s`; their value holds until the next change, so use a long window to find it.
+- `vm_status`: `ok` (numeric data), `string_only`, `missing` (see `vm_reason`: `disabled`,
+  `no_state`, `non_numeric`, `not_exported` — only the last needs attention) or `orphan`.
+  `/catalog/status` returns counts by status, reason and domain, and lists the orphans.
