@@ -42,3 +42,24 @@ configuration:
       *_battery (every battery sensor), sensor.plant_sensor_p?_moisture (P1 and P2),
       light.small_screen_display_backlight (one exact entity). Ignored entities stay
       searchable; they just stop counting as problems.
+  helper_snapshot_enabled:
+    name: Record helpers into VictoriaMetrics
+    description: >-
+      Off by default. When on, this add-on periodically WRITES the current value of the helpers
+      listed below into VictoriaMetrics, under the same series Home Assistant already uses, so
+      settings that rarely change keep recent samples and do not age out. It creates no entities in
+      Home Assistant and never writes to Home Assistant. Needs InfluxDB-style ingest and a
+      VictoriaMetrics login that is allowed to write.
+  helper_snapshot_cron:
+    name: Helper recording schedule
+    description: >-
+      When to record the helper values, as a cron expression. Default 5 */6 * * * is every six
+      hours at five past. It also runs once whenever the add-on starts.
+  helper_snapshot_entities:
+    name: Helpers to record
+    description: >-
+      Which helpers to record, one pattern per line, using the same wildcards as the ignore list
+      (* any characters, ? one character, [abc] one of; whole entity ID including the domain,
+      case-sensitive). Only input_number and input_boolean entities are ever written, whatever
+      the pattern. Nothing is recorded if this is empty. Example: input_number.* records every
+      number helper. Open /catalog/snapshot-preview to see exactly what would be written.

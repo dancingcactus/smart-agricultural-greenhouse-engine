@@ -48,3 +48,25 @@ Blank lines are skipped, and surrounding spaces are trimmed.
 See the project README for the full API (catalog, read-only Home Assistant and VictoriaMetrics
 routes, call log). The API port (8099) is off by default; enable it on the Network tab only when
 you need it, and set `api_key` first.
+
+## Recording helpers into VictoriaMetrics
+
+Home Assistant's InfluxDB integration only writes when a value changes, so a setpoint nobody touches
+stops producing samples and can eventually age out of VictoriaMetrics' retention. This add-on can
+write each helper's current value on a schedule instead, **directly to VictoriaMetrics**, under the
+same series Home Assistant uses. It adds no entities to Home Assistant and no duplicate series.
+
+| Option | What it does |
+| --- | --- |
+| `helper_snapshot_enabled` | Off by default. Turns the job on. |
+| `helper_snapshot_entities` | Which helpers, same wildcards as the ignore list. Empty means nothing is written. |
+| `helper_snapshot_cron` | Schedule; default every six hours. It also runs once at add-on start. |
+
+This is the gateway's only write path. It writes only to VictoriaMetrics (never Home Assistant),
+only `input_number` and `input_boolean` values, only for helpers matching your patterns, and there
+is no API endpoint that can trigger it. Requirements: InfluxDB-style ingest, and a VictoriaMetrics
+login that may write (`vm_username` / `vm_password`).
+
+To check before enabling, set `helper_snapshot_entities` and open
+`/catalog/snapshot-preview`: it lists the exact lines that would be written and any helpers skipped
+(for example a value that is `unavailable`), and writes nothing.

@@ -86,3 +86,16 @@ seconds or RFC3339) and `X-Caller` (which tool is calling, for the log).
   2024.10+. Each mirror is `sensor.<helper>_snapshot`; the catalog links it to its helper
   (`mirror_of` / `mirrored_by`) and shows the helper as `mirrored`. Mirrors carry a `recorded_at`
   attribute so every run is a change; the matching text series (`recorded_at_str`) is noise.
+
+## Recording helpers directly into VictoriaMetrics (no extra entities)
+
+Alternative to the mirror sensors above, and the one that keeps Home Assistant clean. With
+`helper_snapshot_enabled` on, the gateway writes each listed helper's current value to
+VictoriaMetrics every `helper_snapshot_cron` (default every 6 hours, and at start-up), as line
+protocol on `/write`, under the series Home Assistant's InfluxDB integration already uses:
+the same measurement and tags are copied from the existing series when there is one, otherwise the
+integration's convention is followed (measurement = unit, or the entity id when there is no unit).
+
+This is the gateway's only write path. It is off by default, writes only to VictoriaMetrics, only
+`input_number` and `input_boolean` entities matching `helper_snapshot_entities`, and nothing in the
+HTTP API can trigger it. `GET /catalog/snapshot-preview` shows exactly what would be written.

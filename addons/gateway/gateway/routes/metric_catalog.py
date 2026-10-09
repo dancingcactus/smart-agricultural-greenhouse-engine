@@ -3,9 +3,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 
+from gateway import config
+from gateway.deps import as_of, get_ha
+from gateway.ha_client import HAClient
+from gateway.jobs import helper_snapshot
 from gateway.metric_catalog import mirror, store
 from gateway.metric_catalog.runner import run_from_env
 
@@ -60,6 +64,19 @@ def mirror_yaml(only: str = "stale", stale_days: int = 30, hours: int = 6, domai
         return PlainTextResponse(mirror.mirror_yaml(rows, hours), media_type="text/yaml")
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+
+
+@router.get("/snapshot-preview")
+def snapshot_preview(as_of_ts: float | None = Depends(as_of), ha: HAClient = Depends(get_ha)):
+    """Exactly what the helper snapshot job would write now. Writes nothing."""
+    if as_of_ts is not None:
+        raise HTTPException(409, "live-only endpoint: unavailable while an as-of time is in force")
+    conn = _conn()
+    try:
+        result = helper_snapshot.plan(ha.states(), config.snapshot_patterns(), conn)
+    finally:
+        conn.close()
+    return {"enabled": config.snapshot_enabled(), "patterns": config.snapshot_patterns(), **result}
 
 
 @router.get("/metrics")

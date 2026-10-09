@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from gateway import addon, middleware
+from gateway import addon, config, middleware
+from gateway.jobs import helper_snapshot
 from gateway.jobs.scheduler import start_scheduler
 from gateway.metric_catalog.runner import run_from_env
 from gateway.routes import calls, ha, metric_catalog, vm
@@ -18,7 +19,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 async def lifespan(app: FastAPI):
     addon.apply_options()
     cron = os.environ.get("METRIC_CATALOG_CRON")
-    sched = start_scheduler(cron, run_from_env) if cron else None
+    snapshot = config.snapshot_enabled() and bool(config.snapshot_patterns())
+    sched = start_scheduler(
+        cron, run_from_env,
+        snapshot_cron=config.snapshot_cron() if snapshot else None,
+        run_snapshot=helper_snapshot.run_from_env if snapshot else None,
+    ) if cron else None
     yield
     if sched:
         sched.shutdown(wait=False)
