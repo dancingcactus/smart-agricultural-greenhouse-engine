@@ -1,0 +1,16 @@
+name: Greenhouse Gateway
+version: "0.1.0"
+slug: greenhouse_gateway
+description: Read-only gateway between Home Assistant and the Greenhouse AI Operator
+arch: [aarch64, amd64]
+homeassistant_api: true
+map:
+  - homeassistant_config:ro
+options:
+  vm_url: "http://localhost:8428"
+  metric_catalog_cron: "15 3 * * *"
+  metric_catalog_lookback_days: 30
+schema:
+  vm_url: str
+  metric_catalog_cron: str
+  metric_catalog_lookback_days: int
