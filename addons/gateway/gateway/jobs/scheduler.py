@@ -16,8 +16,8 @@ def start_scheduler(metric_catalog_cron: str, run_catalog) -> BackgroundSchedule
     def guarded() -> None:
         try:
             log.info("metric catalog run: %s", run_catalog())
-        except Exception:
-            log.exception("metric catalog run failed")
+        except Exception as exc:
+            log.error("metric catalog run failed: %s", exc, exc_info=not isinstance(exc, RuntimeError))
 
     sched = BackgroundScheduler()
     sched.add_job(guarded, CronTrigger.from_crontab(metric_catalog_cron), id="metric_catalog",

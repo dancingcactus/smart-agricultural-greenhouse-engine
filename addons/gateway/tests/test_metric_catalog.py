@@ -145,3 +145,10 @@ def test_ha_client_has_no_write_or_unlisted_ws():
     assert not any(hasattr(ha, n) for n in ("post", "call_service", "put", "delete"))
     with pytest.raises(PermissionError):
         ha.ws_list("call_service")
+
+
+def test_unreachable_vm_error_names_the_url():
+    with respx.mock(base_url="http://vm") as router:
+        router.get("/api/v1/series").mock(side_effect=httpx.ConnectError("refused"))
+        with pytest.raises(RuntimeError, match="http://vm"):
+            VMClient("http://vm").series(0)

@@ -42,7 +42,10 @@ class VMClient:
         self._http = httpx.Client(base_url=base_url.rstrip("/"), timeout=timeout)
 
     def _get(self, path: str, params: dict) -> list | dict:
-        resp = self._http.get(path, params=params)
+        try:
+            resp = self._http.get(path, params=params)
+        except httpx.TransportError as exc:
+            raise RuntimeError(f"cannot reach VictoriaMetrics at {self._http.base_url}: {exc}") from exc
         resp.raise_for_status()
         body = resp.json()
         if body.get("status") != "success":
