@@ -67,6 +67,11 @@ only `input_number` and `input_boolean` values, only for helpers matching your p
 is no API endpoint that can trigger it. Requirements: InfluxDB-style ingest, and a VictoriaMetrics
 login that may write (`vm_username` / `vm_password`).
 
+The series identity follows the InfluxDB integration: measurement = the unit (or the entity ID when
+there is no unit), tags = `domain`, `entity_id` and the extra tags nearly all your series share, such
+as `db=homeassistant`. A helper is skipped, not written, if the catalog shows it already has a series
+under a different name. Run the catalog once before enabling.
+
 To check before enabling, set `helper_snapshot_entities` and open
 `/catalog/snapshot-preview`: it lists the exact lines that would be written and any helpers skipped
 (for example a value that is `unavailable`), and writes nothing.

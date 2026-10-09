@@ -1,5 +1,5 @@
 name: Greenhouse Gateway
-version: "0.5.0"
+version: "0.5.1"
 slug: greenhouse_gateway
 description: Read-only gateway between Home Assistant and the Greenhouse AI Operator
 url: https://github.com/dancingcactus/smart-agricultural-greenhouse-engine
