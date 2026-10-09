@@ -38,14 +38,20 @@ def selector_for(metric: str, labels: dict[str, str]) -> str:
 
 
 class VMClient:
-    def __init__(self, base_url: str, timeout: float = 60.0):
-        self._http = httpx.Client(base_url=base_url.rstrip("/"), timeout=timeout)
+    def __init__(self, base_url: str, timeout: float = 60.0, username: str = "", password: str = ""):
+        auth = httpx.BasicAuth(username, password) if username else None
+        self._http = httpx.Client(base_url=base_url.rstrip("/"), timeout=timeout, auth=auth)
 
     def _get(self, path: str, params: dict) -> list | dict:
         try:
             resp = self._http.get(path, params=params)
         except httpx.TransportError as exc:
             raise RuntimeError(f"cannot reach VictoriaMetrics at {self._http.base_url}: {exc}") from exc
+        if resp.status_code in (401, 403):
+            raise RuntimeError(
+                f"VictoriaMetrics at {self._http.base_url} rejected the credentials "
+                f"(HTTP {resp.status_code}); set vm_username / vm_password"
+            )
         resp.raise_for_status()
         body = resp.json()
         if body.get("status") != "success":

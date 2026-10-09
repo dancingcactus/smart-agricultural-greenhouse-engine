@@ -29,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     if args.cmd == "run":
-        result = run_once(HAClient.from_env(), VMClient(cfg["vm_url"]), args.db, args.out_dir,
+        result = run_once(HAClient.from_env(), VMClient(cfg["vm_url"], username=cfg["vm_username"], password=cfg["vm_password"]), args.db, args.out_dir,
                           args.lookback_days, args.git_commit)
         print(json.dumps(result))
         return 0

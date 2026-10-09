@@ -152,3 +152,13 @@ def test_unreachable_vm_error_names_the_url():
         router.get("/api/v1/series").mock(side_effect=httpx.ConnectError("refused"))
         with pytest.raises(RuntimeError, match="http://vm"):
             VMClient("http://vm").series(0)
+
+
+def test_basic_auth_sent_and_rejection_explained():
+    with respx.mock(base_url="http://vm") as router:
+        route = router.get("/api/v1/labels").respond(json={"status": "success", "data": ["entity"]})
+        assert VMClient("http://vm", username="u", password="p").labels(0) == {"entity"}
+        assert route.calls[0].request.headers["authorization"].startswith("Basic ")
+        router.get("/api/v1/series").respond(401)
+        with pytest.raises(RuntimeError, match="vm_username"):
+            VMClient("http://vm").series(0)
