@@ -95,3 +95,32 @@ Read it with `/weather/forecast`, `/weather/observations` and `/weather/status`.
 header, `/weather/forecast` returns the latest forecast pulled at or before that time, or 404 if
 none had been pulled yet; it never falls back to a later one. The gateway reads forecasts through a
 read-only websocket subscription, not a service call.
+
+## Configuration snapshot
+
+With `config_snapshot_enabled` on, the gateway copies your Home Assistant configuration into a git
+history inside the add-on (hourly by default, and at start-up) so the agent side can read it, and
+read it as it was at any past time. The Home Assistant config folder is mapped into the add-on
+read-only.
+
+| Option | What it does |
+| --- | --- |
+| `config_snapshot_enabled` | Off by default. |
+| `config_snapshot_cron` | When to snapshot. Default hourly at twenty past. |
+| `protected_automations` | Patterns for automations that may never be agent-managed. |
+
+**What is copied:** top-level `*.yaml` files, `packages/`, `automations/`, `scripts/`, `scenes/`,
+`templates/` and `blueprints/`, plus helper and dashboard definitions from `.storage`. **Never
+copied:** `secrets.yaml`, login and token files, integration credentials, certificates and keys.
+**Blanked in the copies:** values under keys named like password, token, secret, api_key, and your
+latitude and longitude. `!secret name` references stay (they hold no value).
+
+**Safety scan:** before anything is committed, the copy is searched for every value in
+`secrets.yaml` and for this add-on's own credentials. A single hit aborts the snapshot, leaves the
+previous one untouched, and reports which file (never the value) via `/snapshot/status`. Values
+shorter than four characters are not searchable; the status shows how many were skipped.
+
+**Reading it:** `/snapshot/files`, `/snapshot/file?path=...`, `/snapshot/log`,
+`/snapshot/automations`, `/snapshot/entity-references`, all honouring `X-As-Of`. `POST
+/snapshot/run` takes one now. The commit date is the time the snapshot was taken, so a change
+is never visible earlier than the gateway actually saw it.

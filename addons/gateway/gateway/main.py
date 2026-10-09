@@ -8,9 +8,10 @@ from fastapi import FastAPI
 
 from gateway import addon, config, middleware
 from gateway.jobs import helper_snapshot, weather_archive
+from gateway.jobs import snapshot as snapshot_job
 from gateway.jobs.scheduler import start_scheduler
 from gateway.metric_catalog.runner import run_from_env
-from gateway.routes import calls, ha, metric_catalog, vm, weather
+from gateway.routes import calls, ha, metric_catalog, snapshot, vm, weather
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -24,8 +25,12 @@ async def lifespan(app: FastAPI):
         cron, run_from_env,
         snapshot_cron=config.snapshot_cron() if snapshot else None,
         run_snapshot=helper_snapshot.run_from_env if snapshot else None,
-        extra_jobs={"weather_archive": (config.weather_cron(), weather_archive.run_from_env)}
-        if config.weather_entities() else None,
+        extra_jobs={
+            **({"weather_archive": (config.weather_cron(), weather_archive.run_from_env)}
+               if config.weather_entities() else {}),
+            **({"config_snapshot": (config.snapshot_config_cron(), snapshot_job.run_from_env)}
+               if config.snapshot_enabled_config() else {}),
+        } or None,
     ) if cron else None
     yield
     if sched:
@@ -37,6 +42,7 @@ middleware.install(app)
 app.include_router(metric_catalog.router)
 app.include_router(ha.router)
 app.include_router(vm.router)
+app.include_router(snapshot.router)
 app.include_router(weather.router)
 app.include_router(calls.router)
 

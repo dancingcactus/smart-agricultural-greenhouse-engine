@@ -54,3 +54,19 @@ def weather_horizon_hours() -> int:
 
 def weather_db() -> str:
     return os.environ.get("WEATHER_DB", "weather_archive.sqlite3")
+
+
+def mirror_dir() -> Path:
+    return Path(os.environ.get("MIRROR_DIR", "mirror"))
+
+
+def snapshot_enabled_config() -> bool:
+    return os.environ.get("CONFIG_SNAPSHOT_ENABLED", "").lower() in ("1", "true", "yes")
+
+
+def snapshot_config_cron() -> str:
+    return os.environ.get("CONFIG_SNAPSHOT_CRON", "20 * * * *")
+
+
+def protected_automations() -> list[str]:
+    return [p.strip() for p in os.environ.get("PROTECTED_AUTOMATIONS", "").splitlines() if p.strip()]

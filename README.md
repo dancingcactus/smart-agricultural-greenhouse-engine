@@ -118,3 +118,27 @@ has no way to call a service. An unchanged forecast is stored once.
 
 History starts when you turn it on. Actual past weather already in VictoriaMetrics (the entity's
 attributes) is separate and available through `/vm/*`.
+
+## Configuration snapshot
+
+With `config_snapshot_enabled` on, the gateway copies an allowlist of the Home Assistant config
+(top-level `*.yaml`, `packages/`, `automations/`, `scripts/`, `scenes/`, `templates/`, `blueprints/`,
+and helper and dashboard definitions from `.storage`) into a private git repository at
+`/data/mirror`. `secrets.yaml`, login/token files, integration credentials and keys are never
+copied (a deny list is checked before the allowlist); values under keys such as `password`,
+`token`, `api_key`, `latitude` and `longitude` are blanked; `!secret name` references stay.
+
+Before anything is committed the copy is searched for every value in `secrets.yaml` and for the
+gateway's own credentials (also in URL-encoded form), together with the catalog exports. One hit
+aborts the snapshot, leaves the previous mirror untouched, and reports the file and an
+identifier of the value, never the value. Values under four characters cannot be searched; the
+status counts them.
+
+Alongside the files it writes `catalog/automations.json` (purpose, triggers, services called,
+entities touched, last run, `managed` / `protected`) and `catalog/entity_references.json`
+(entity -> automations). `protected_automations` patterns always win over the `agent-managed` label.
+
+`GET /snapshot/{status,files,file,log,automations,automations/{key},entity-references}`, all
+honouring `X-As-Of` by reading the latest commit made at or before that time (404 if none); `POST
+/snapshot/run` takes a snapshot now. Commit dates are the snapshot time, so a config change is never
+visible earlier than the gateway saw it.

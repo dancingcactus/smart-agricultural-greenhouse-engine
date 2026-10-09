@@ -170,7 +170,7 @@ def test_preview_route_is_get_only_and_writes_nothing(monkeypatch, tmp_path):
     assert client.post("/catalog/snapshot-preview").status_code == 405
     assert client.get("/catalog/snapshot-preview", headers={"X-As-Of": "1700000000"}).status_code == 409
     paths = app.openapi()["paths"]
-    assert [p for p, ops in paths.items() if "post" in ops] == ["/catalog/run"]  # no new write trigger
+    assert {p for p, ops in paths.items() if "post" in ops} == {"/catalog/run", "/snapshot/run"}  # no new trigger
 
 
 def test_scheduler_only_adds_the_snapshot_job_when_asked():

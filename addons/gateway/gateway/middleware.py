@@ -12,8 +12,8 @@ from gateway import config
 from gateway.calllog import CallLog
 from gateway.redact import redact
 
-# The gateway is read-only. The one POST refreshes the metric catalog and writes nothing upstream.
-ALLOWED_POSTS = {"/catalog/run"}
+# The gateway is read-only toward Home Assistant. These POSTs refresh its own catalogs and writes nothing upstream.
+ALLOWED_POSTS = {"/catalog/run", "/snapshot/run"}
 OPEN_PATHS = {"/health"}
 
 

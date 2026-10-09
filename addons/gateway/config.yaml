@@ -1,5 +1,5 @@
 name: Greenhouse Gateway
-version: "0.6.0"
+version: "0.7.0"
 slug: greenhouse_gateway
 description: Read-only gateway between Home Assistant and the Greenhouse AI Operator
 url: https://github.com/dancingcactus/smart-agricultural-greenhouse-engine
@@ -29,6 +29,9 @@ options:
   weather_entities: []
   weather_cron: "10 * * * *"
   weather_hourly_horizon_hours: 72
+  config_snapshot_enabled: false
+  config_snapshot_cron: "20 * * * *"
+  protected_automations: []
 schema:
   vm_url: str
   vm_username: str?
@@ -47,3 +50,7 @@ schema:
     - str
   weather_cron: str
   weather_hourly_horizon_hours: int(6,240)
+  config_snapshot_enabled: bool
+  config_snapshot_cron: str
+  protected_automations:
+    - str

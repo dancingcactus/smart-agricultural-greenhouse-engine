@@ -81,3 +81,26 @@ configuration:
     description: >-
       How many hours ahead to keep from each hourly forecast, 6 to 240. Default 72, enough for
       the three-day look-ahead. Longer horizons use more storage.
+  config_snapshot_enabled:
+    name: Mirror the Home Assistant configuration
+    description: >-
+      Off by default. When on, this add-on periodically copies your automations, scripts, scenes,
+      packages, helper definitions and dashboards into a private git history inside the add-on, so
+      the agent side can read your configuration and see how it changed. Passwords, tokens, API keys
+      and your home's coordinates are blanked, secrets.yaml and login files are never copied, and
+      nothing is saved if any value from secrets.yaml turns up in the copy. Review the first
+      snapshot (/snapshot/files) before sharing this add-on's API key with anything.
+  config_snapshot_cron:
+    name: Configuration snapshot schedule
+    description: >-
+      When to take a snapshot, as a cron expression. Default 20 * * * * is hourly at twenty past. It
+      also runs once when the add-on starts. A snapshot that changed nothing adds no history.
+  protected_automations:
+    name: Protected automations
+    description: >-
+      Automations the agent must never be allowed to change (frost, overheat, overflow, pump
+      protection...), one pattern per line. A pattern is matched against each automation's entity ID
+      (automation.frost_alarm), its config id, and its alias in lower case, using the same wildcards
+      as the ignore list (* any characters, ? one character, [abc] one of). Example:
+      automation.frost_*. A protected automation can never be treated as agent-managed, even if
+      it carries the agent-managed label.
