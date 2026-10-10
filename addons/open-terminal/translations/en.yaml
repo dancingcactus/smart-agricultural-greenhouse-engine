@@ -7,7 +7,7 @@ configuration:
   gateway_host:
     name: Gateway hostname
     description: >-
-      The Greenhouse Gateway add-on's hostname on the Home Assistant network, for example
+      The SAGE Gateway add-on's hostname on the Home Assistant network, for example
       abc123ef-greenhouse-gateway (shown on that add-on's Info page). A bare name: no http://, port or
       path. This is the only place the sandbox can connect to, so it is required.
   gateway_port:

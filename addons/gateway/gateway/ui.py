@@ -2,7 +2,7 @@
 
 PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Greenhouse glossary</title>
+<title>SAGE glossary</title>
 <style>
 :root { --bg:#fff; --fg:#1d2327; --muted:#5d6770; --line:#d9dee3; --card:#f6f8fa; --accent:#2f7d4f; --warn:#9a5b00;
         --bad:#a12b2b; --chip:#e8eef2; }

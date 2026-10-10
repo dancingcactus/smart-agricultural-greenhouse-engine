@@ -4,8 +4,8 @@ Two add-ons, installed after the gateway is working with its `api_key` set:
 
 | Add-on | What it is | Can reach |
 | --- | --- | --- |
-| **Greenhouse Sandbox** (Open Terminal) | The agent's shell, for writing and testing its own analysis code | Only the gateway (and anything you list). Nothing else, including the internet |
-| **Greenhouse AI Operator** (Open WebUI) | The chat front end; talks to models through OpenRouter and runs commands in the sandbox | OpenRouter, the sandbox. No Home Assistant credential |
+| **SAGE Sandbox** (Open Terminal) | The agent's shell, for writing and testing its own analysis code | Only the gateway (and anything you list). Nothing else, including the internet |
+| **SAGE Open WebUI** | The chat front end; talks to models through OpenRouter and runs commands in the sandbox | OpenRouter, the sandbox. No Home Assistant credential |
 
 Neither add-on has a Home Assistant token, a Home Assistant folder, or any host access. Data reaches
 them only through the gateway's read-only API.
@@ -52,7 +52,7 @@ links to that address.
 2. **Tool.** Workspace → Tools → New tool, paste `owui/tools/greenhouse_gateway.py`, save. Open its
    settings (Valves) and set `GATEWAY_URL` (for example `http://a0d7b954-greenhouse-gateway:8099`)
    and `GATEWAY_KEY`.
-3. **Try it.** Start a chat with a model, switch on the Greenhouse Gateway tool and the terminal, and
+3. **Try it.** Start a chat with a model, switch on the SAGE Gateway tool and the terminal, and
    ask: *"Find the sensors that measure humidity and tell me how they are recorded."*
 
 ## Checking the safety properties

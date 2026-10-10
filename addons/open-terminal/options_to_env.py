@@ -14,7 +14,7 @@ MIN_KEY_LENGTH = 16
 def build_env(options: dict) -> dict:
     host = (options.get("gateway_host") or "").strip()
     if not host:
-        raise ValueError("gateway_host is required: the Greenhouse Gateway add-on's hostname. The sandbox may "
+        raise ValueError("gateway_host is required: the SAGE Gateway add-on's hostname. The sandbox may "
                          "reach nothing else, so starting without it would leave the sandbox with no data.")
     if "/" in host or ":" in host or " " in host:
         raise ValueError("gateway_host must be a bare hostname, such as abc123_greenhouse_gateway (no http://, port or path)")

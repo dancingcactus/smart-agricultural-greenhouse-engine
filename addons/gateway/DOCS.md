@@ -1,6 +1,6 @@
-# Greenhouse Gateway
+# SAGE Gateway
 
-A read-only bridge between Home Assistant and the Greenhouse AI Operator. It never changes anything
+A read-only bridge between Home Assistant and SAGE. It never changes anything
 in Home Assistant. It records which entities are stored in VictoriaMetrics (and under what metric
 names) and serves read-only history to the agent side.
 
@@ -132,7 +132,7 @@ meters is the GAHT exit sensor). The glossary holds a plain-English meaning for 
 After every catalog run, each new entity gets a **draft** built from facts the catalog already knows
 (name, unit, area, device class); you add the meaning.
 
-Open the **Greenhouse** item in the Home Assistant sidebar to review: filter by status, edit the
+Open the **SAGE** item in the Home Assistant sidebar to review: filter by status, edit the
 meaning and aliases, then **Approve**, **Save as draft** or **Reject**. Entities whose names look
 cryptic (hex suffixes, numbered duplicates) are listed first.
 

@@ -1,4 +1,4 @@
-# Greenhouse Sandbox
+# SAGE Sandbox
 
 A shell for the agent to write and test its own analysis code, with a built-in firewall. It is
 Open WebUI's Open Terminal, run with these restrictions:

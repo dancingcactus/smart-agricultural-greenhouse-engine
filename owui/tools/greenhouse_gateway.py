@@ -1,8 +1,8 @@
 """
-title: Greenhouse Gateway
-author: Greenhouse AI Operator
+title: SAGE Gateway
+author: SAGE
 version: 0.1.0
-description: Read-only access to the greenhouse's data (entities, history, weather forecasts, configuration, glossary) through the Greenhouse Gateway. It cannot change anything in Home Assistant.
+description: Read-only access to the greenhouse's data (entities, history, weather forecasts, configuration, glossary) through the SAGE Gateway. It cannot change anything in Home Assistant.
 """
 
 # --- client (generated from addons/open-terminal/sdk/greenhouse_gateway.py; do not edit here) ---

@@ -1,6 +1,6 @@
 # Pinned to a release so the chat front end cannot change under you. Newer versions: bump this tag
 # deliberately and re-run your checks.
-ARG BUILD_FROM=ghcr.io/open-webui/open-webui:v0.11.4
+ARG BUILD_FROM=ghcr.io/open-webui/open-webui:v0.12.0
 FROM ${BUILD_FROM}
 
 # Run as root so the add-on can write its storage; the container has no Home Assistant credential.

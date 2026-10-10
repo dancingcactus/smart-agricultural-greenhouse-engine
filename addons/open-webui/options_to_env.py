@@ -20,7 +20,7 @@ def build_env(options: dict) -> dict:
         raise ValueError("openrouter_api_key is required: create one at openrouter.ai and set a credit limit on it")
     host = (options.get("terminal_host") or "").strip()
     if not host or any(c in host for c in "/: "):
-        raise ValueError("terminal_host must be the Greenhouse Sandbox add-on's bare hostname (no http://, port or path)")
+        raise ValueError("terminal_host must be the SAGE Sandbox add-on's bare hostname (no http://, port or path)")
     terminal_key = (options.get("terminal_api_key") or "").strip()
     if len(terminal_key) < MIN_KEY_LENGTH:
         raise ValueError(f"terminal_api_key must be at least {MIN_KEY_LENGTH} characters and match the sandbox's api_key")
@@ -30,7 +30,7 @@ def build_env(options: dict) -> dict:
         "PORT": "8080",
         "DATA_DIR": "/data/webui",
         "WEBUI_SECRET_KEY_FILE": "/data/.webui_secret_key",  # survives rebuilds, so logins stay valid
-        "WEBUI_NAME": "Greenhouse AI Operator",
+        "WEBUI_NAME": "SAGE",
         # The options above are the source of truth: re-apply them on every start.
         "ENABLE_PERSISTENT_CONFIG": "false",
         "WEBUI_AUTH": "true",

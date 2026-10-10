@@ -7,7 +7,7 @@ configuration:
   terminal_host:
     name: Sandbox hostname
     description: >-
-      The Greenhouse Sandbox add-on's hostname on the Home Assistant network, for example
+      The SAGE Sandbox add-on's hostname on the Home Assistant network, for example
       abc123ef-greenhouse-sandbox (shown on that add-on's Info page). A bare name: no http://, port or path.
   terminal_port:
     name: Sandbox port
@@ -15,7 +15,7 @@ configuration:
   terminal_api_key:
     name: Sandbox API key
     description: >-
-      Must be exactly the Greenhouse Sandbox add-on's api_key (at least 16 characters). Open WebUI sends
+      Must be exactly the SAGE Sandbox add-on's api_key (at least 16 characters). Open WebUI sends
       it when the agent runs commands.
   allow_signup:
     name: Allow account sign-up

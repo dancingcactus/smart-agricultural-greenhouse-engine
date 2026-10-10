@@ -1,6 +1,10 @@
-# Greenhouse AI Operator
+# SAGE: Smart Agricultural Greenhouse Engine
 
 Shadow-phase LLM head grower for a Home Assistant greenhouse. See the requirements doc for scope.
+
+SAGE ships as three Home Assistant add-ons: **SAGE Gateway** (`addons/gateway`), **SAGE Sandbox** (`addons/open-terminal`) and **SAGE Open WebUI** (`addons/open-webui`). Each has a `CHANGELOG.md`, which Home Assistant shows on the add-on's Changelog tab; add an entry and bump `version` in its `config.yaml` with every change.
+
+The add-on slugs (`greenhouse_gateway`, `greenhouse_sandbox`, `greenhouse_webui`) keep their old names on purpose: changing a slug makes Home Assistant treat it as a new add-on, with a new hostname and empty data.
 
 ## Entity → VictoriaMetrics metric catalog
 
@@ -21,7 +25,7 @@ with no HA entity). `avg_interval_s` is (last - first)/(samples - 1), a mean, no
 1. Settings → Add-ons → Add-on Store → ⋮ → Repositories → add
    `https://github.com/dancingcactus/smart-agricultural-greenhouse-engine`
    (the add-on lives on the `claude/busy-wozniak-v9tggp` branch until it is merged to the default branch).
-2. Install **Greenhouse Gateway**. On the Configuration tab set `vm_url` to where VictoriaMetrics is
+2. Install **SAGE Gateway**. On the Configuration tab set `vm_url` to where VictoriaMetrics is
    reachable *from the add-on* (e.g. `http://192.168.1.20:8428`; `localhost` is the add-on itself).
 3. Start it and watch the **Log** tab: the first catalog run happens at startup, then daily per
    `metric_catalog_cron`.
