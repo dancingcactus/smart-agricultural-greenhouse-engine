@@ -5,7 +5,7 @@ Two add-ons, installed after the gateway is working with its `api_key` set:
 | Add-on | What it is | Can reach |
 | --- | --- | --- |
 | **SAGE Sandbox** (Open Terminal) | The agent's shell, for writing and testing its own analysis code | Only the gateway (and anything you list). Nothing else, including the internet |
-| **SAGE Open WebUI** | The chat front end; talks to models through OpenRouter and runs commands in the sandbox | OpenRouter, the sandbox. No Home Assistant credential |
+| **SAGE Agent** | The chat front end; talks to models through OpenRouter and runs commands in the sandbox | OpenRouter, the sandbox. No Home Assistant credential |
 
 Neither add-on has a Home Assistant token, a Home Assistant folder, or any host access. Data reaches
 them only through the gateway's read-only API.

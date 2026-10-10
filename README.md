@@ -2,7 +2,7 @@
 
 Shadow-phase LLM head grower for a Home Assistant greenhouse. See the requirements doc for scope.
 
-SAGE ships as three Home Assistant add-ons: **SAGE Gateway** (`addons/gateway`), **SAGE Sandbox** (`addons/open-terminal`) and **SAGE Open WebUI** (`addons/open-webui`). Each has a `CHANGELOG.md`, which Home Assistant shows on the add-on's Changelog tab; add an entry and bump `version` in its `config.yaml` with every change.
+SAGE ships as three Home Assistant add-ons: **SAGE Gateway** (`addons/gateway`), **SAGE Sandbox** (`addons/open-terminal`) and **SAGE Agent** (`addons/open-webui`). Each has a `CHANGELOG.md`, which Home Assistant shows on the add-on's Changelog tab; add an entry and bump `version` in its `config.yaml` with every change.
 
 The add-on slugs (`greenhouse_gateway`, `greenhouse_sandbox`, `greenhouse_webui`) keep their old names on purpose: changing a slug makes Home Assistant treat it as a new add-on, with a new hostname and empty data.
 

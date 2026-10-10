@@ -1,4 +1,4 @@
-# SAGE Open WebUI
+# SAGE Agent (Open WebUI)
 
 The chat front end. Models come from OpenRouter; commands run in the SAGE Sandbox. This
 add-on has no Home Assistant credential: it sees greenhouse data only through the gateway's
