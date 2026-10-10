@@ -5,13 +5,14 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 
-from gateway import addon, config, middleware
+from gateway import addon, config, middleware, ui
 from gateway.jobs import helper_snapshot, weather_archive
 from gateway.jobs import snapshot as snapshot_job
 from gateway.jobs.scheduler import start_scheduler
 from gateway.metric_catalog.runner import run_from_env
-from gateway.routes import calls, ha, metric_catalog, snapshot, vm, weather
+from gateway.routes import calls, glossary, ha, metric_catalog, snapshot, vm, weather
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -42,9 +43,15 @@ middleware.install(app)
 app.include_router(metric_catalog.router)
 app.include_router(ha.router)
 app.include_router(vm.router)
+app.include_router(glossary.router)
 app.include_router(snapshot.router)
 app.include_router(weather.router)
 app.include_router(calls.router)
+
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def panel():
+    return ui.PAGE
 
 
 @app.get("/health")

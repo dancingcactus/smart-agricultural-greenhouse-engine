@@ -31,9 +31,10 @@ def test_no_route_can_call_a_service(client):
     assert not any("service" in p and p != "/ha/services" for p in paths)
     allowed = {(p, m) for p, ops in paths.items() for m in ops}
     from gateway.middleware import ALLOWED_POSTS
-    assert all(m == "get" for p, m in allowed if p not in ALLOWED_POSTS)
-    assert {p for p, m in allowed if m != "get"} == ALLOWED_POSTS  # nothing else can write, and none are missing
-    assert ALLOWED_POSTS == {"/catalog/run", "/snapshot/run"}  # each one only refreshes the add-on's own data
+    writes = {(p, m) for p, m in allowed if m != "get"}
+    # Nothing else can write, and none are missing. Each only changes this add-on's own data.
+    assert writes == {(p, "post") for p in ALLOWED_POSTS} | {("/glossary/{entity_id}", "put")}
+    assert ALLOWED_POSTS == {"/catalog/run", "/snapshot/run", "/glossary/drafts"}
 
 
 def test_api_key_enforced_and_health_open(client, monkeypatch):

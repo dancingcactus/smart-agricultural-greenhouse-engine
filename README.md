@@ -142,3 +142,15 @@ entities touched, last run, `managed` / `protected`) and `catalog/entity_referen
 honouring `X-As-Of` by reading the latest commit made at or before that time (404 if none); `POST
 /snapshot/run` takes a snapshot now. Commit dates are the snapshot time, so a config change is never
 visible earlier than the gateway saw it.
+
+## Entity glossary and the Greenhouse panel
+
+`config.yaml` enables ingress, so the add-on adds a **Greenhouse** item to the Home Assistant
+sidebar (admins only). It shows the entity glossary: every recorded entity gets a draft built from
+the catalog (cryptic names first), and an owner approves or edits the meaning there.
+
+Approval is the one thing the API key cannot do. A request counts as "owner" only when its network
+peer is the Supervisor's ingress proxy (`172.30.32.2`, which Home Assistant has already put behind
+its login); headers such as `X-Ingress-Path` or `X-Forwarded-For` are ignored. The API key may read
+the glossary and `POST /glossary/drafts`, which only writes drafts and cannot touch approved
+entries. `GET /glossary` with `X-As-Of` returns only what was approved by that time.

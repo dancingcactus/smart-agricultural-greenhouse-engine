@@ -57,9 +57,16 @@ def config_from_env() -> dict:
 def run_from_env() -> dict:
     """Entry point for the scheduler: configuration comes from the environment."""
     cfg = config_from_env()
-    return run_once(HAClient.from_env(), _vm_client(cfg), cfg["db_path"], cfg["out_dir"],
-                    cfg["lookback_days"], history_days=cfg["history_days"],
-                    ignore=cfg["ignore"])
+    result = run_once(HAClient.from_env(), _vm_client(cfg), cfg["db_path"], cfg["out_dir"],
+                      cfg["lookback_days"], history_days=cfg["history_days"],
+                      ignore=cfg["ignore"])
+    try:  # new entities get a draft glossary entry; a failure here must not fail the catalog run
+        from gateway.glossary.sync import sync_from_env
+
+        result["glossary"] = sync_from_env()
+    except Exception as exc:  # noqa: BLE001
+        result["glossary"] = {"error": f"{type(exc).__name__}: {exc}"}
+    return result
 
 
 def _vm_client(cfg: dict) -> VMClient:

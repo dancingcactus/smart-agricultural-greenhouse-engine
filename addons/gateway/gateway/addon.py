@@ -27,6 +27,7 @@ def apply_options(path: str | Path | None = None) -> bool:
     os.environ["CONFIG_SNAPSHOT_CRON"] = opts.get("config_snapshot_cron") or "20 * * * *"
     os.environ["PROTECTED_AUTOMATIONS"] = "\n".join(opts.get("protected_automations") or [])
     os.environ.setdefault("MIRROR_DIR", "/data/mirror")
+    os.environ.setdefault("GLOSSARY_DB", "/data/glossary.sqlite3")
     os.environ["GATEWAY_API_KEY"] = opts.get("api_key") or ""
     os.environ["GATEWAY_AS_OF"] = opts.get("as_of_override") or ""
     os.environ["METRIC_CATALOG_CRON"] = opts["metric_catalog_cron"]

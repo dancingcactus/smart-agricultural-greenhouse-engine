@@ -70,3 +70,13 @@ def snapshot_config_cron() -> str:
 
 def protected_automations() -> list[str]:
     return [p.strip() for p in os.environ.get("PROTECTED_AUTOMATIONS", "").splitlines() if p.strip()]
+
+
+def glossary_db() -> str:
+    return os.environ.get("GLOSSARY_DB", "glossary.sqlite3")
+
+
+def owner_proxy_ips() -> set[str]:
+    """Peers whose requests have already been authenticated as a Home Assistant admin (the Supervisor's
+    ingress proxy). Requests from anywhere else, including other add-ons, are never treated as owner."""
+    return {ip.strip() for ip in os.environ.get("OWNER_PROXY_IPS", "172.30.32.2").split(",") if ip.strip()}

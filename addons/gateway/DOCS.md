@@ -124,3 +124,22 @@ shorter than four characters are not searchable; the status shows how many were 
 `/snapshot/automations`, `/snapshot/entity-references`, all honouring `X-As-Of`. `POST
 /snapshot/run` takes one now. The commit date is the time the snapshot was taken, so a change
 is never visible earlier than the gateway actually saw it.
+
+## Entity glossary
+
+Your entity ids are often not what a person calls things (for example which of several identical
+meters is the GAHT exit sensor). The glossary holds a plain-English meaning for each recorded entity.
+After every catalog run, each new entity gets a **draft** built from facts the catalog already knows
+(name, unit, area, device class); you add the meaning.
+
+Open the **Greenhouse** item in the Home Assistant sidebar to review: filter by status, edit the
+meaning and aliases, then **Approve**, **Save as draft** or **Reject**. Entities whose names look
+cryptic (hex suffixes, numbered duplicates) are listed first.
+
+**Who can approve:** only requests that arrive through the sidebar panel, which Home Assistant has
+already authenticated as an administrator. The API key can read the glossary and suggest draft
+meanings (`POST /glossary/drafts`) but can never approve, reject or change an approved entry, even if
+it is leaked. Approving is recorded with your name and time.
+
+**For replays:** `GET /glossary` with an `X-As-Of` header returns only what was approved by that
+time, so a replay is never told something an owner wrote later.
