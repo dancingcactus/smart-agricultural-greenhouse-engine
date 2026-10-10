@@ -1,0 +1,26 @@
+configuration:
+  api_key:
+    name: Sandbox API key
+    description: >-
+      The secret Open WebUI uses to run commands in this sandbox, at least 16 characters. Make up a
+      long random value and enter the same one in the Open WebUI add-on (terminal_api_key).
+  gateway_host:
+    name: Gateway hostname
+    description: >-
+      The Greenhouse Gateway add-on's hostname on the Home Assistant network, for example
+      abc123ef-greenhouse-gateway (shown on that add-on's Info page). A bare name: no http://, port or
+      path. This is the only place the sandbox can connect to, so it is required.
+  gateway_port:
+    name: Gateway port
+    description: The port the gateway listens on inside the Home Assistant network. Leave at 8099.
+  gateway_key:
+    name: Gateway API key
+    description: >-
+      The gateway's api_key option. The sandbox sends it with every request, so it can read the
+      gateway and nothing more.
+  extra_allowed_domains:
+    name: Extra allowed domains
+    description: >-
+      Other hostnames the sandbox may reach, one per line, for example a local package mirror. Leave
+      empty for none. Everything not listed here, and the whole internet, is blocked: names do not
+      resolve and connections are dropped.

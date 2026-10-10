@@ -1,0 +1,30 @@
+configuration:
+  openrouter_api_key:
+    name: OpenRouter API key
+    description: >-
+      The key this add-on uses to reach models through openrouter.ai. Create a dedicated key and set
+      a credit limit on it in the OpenRouter dashboard, so spending is capped there.
+  terminal_host:
+    name: Sandbox hostname
+    description: >-
+      The Greenhouse Sandbox add-on's hostname on the Home Assistant network, for example
+      abc123ef-greenhouse-sandbox (shown on that add-on's Info page). A bare name: no http://, port or path.
+  terminal_port:
+    name: Sandbox port
+    description: The port the sandbox listens on inside the Home Assistant network. Leave at 8000.
+  terminal_api_key:
+    name: Sandbox API key
+    description: >-
+      Must be exactly the Greenhouse Sandbox add-on's api_key (at least 16 characters). Open WebUI sends
+      it when the agent runs commands.
+  allow_signup:
+    name: Allow account sign-up
+    description: >-
+      Leave on for the first start so you can create the admin account (the first account becomes
+      the admin). Then turn it off and restart, so nobody else on your network can register. New
+      accounts wait for an admin to approve them either way.
+  allowed_models:
+    name: Allowed models
+    description: >-
+      OpenRouter model IDs to offer, one per line, for example anthropic/claude-haiku-4.5. Leave empty
+      to offer every model OpenRouter lists (hundreds). Models you list here are the only ones that can be chosen.
