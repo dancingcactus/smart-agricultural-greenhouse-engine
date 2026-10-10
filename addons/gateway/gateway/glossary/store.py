@@ -40,6 +40,10 @@ def connect(path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    have = {r["name"] for r in conn.execute("PRAGMA table_info(entries)")}
+    for column in ("device_id", "device_name", "device_model", "platform", "usage"):  # added after the first release
+        if column not in have:
+            conn.execute(f"ALTER TABLE entries ADD COLUMN {column} TEXT")
     return conn
 
 
@@ -74,7 +78,7 @@ def draft_text(row: dict) -> str:
     return f"{name}." + (f" {sentence[:1].upper()}{sentence[1:]}." if detail else "")
 
 
-def sync(catalog: sqlite3.Connection, glossary: sqlite3.Connection, references: dict | None = None,
+def sync(catalog: sqlite3.Connection, glossary: sqlite3.Connection, usage: dict | None = None,
          now: float | None = None) -> dict:
     """Add a draft for each eligible entity in the latest catalog run; refresh facts, never owner text."""
     now = now or time.time()
@@ -89,19 +93,24 @@ def sync(catalog: sqlite3.Connection, glossary: sqlite3.Connection, references: 
     existing = {r["entity_id"] for r in glossary.execute("SELECT entity_id FROM entries")}
     added = updated = 0
     for eid, row in eligible.items():
-        refs = json.dumps((references or {}).get(eid, []))
+        used = (usage or {}).get(eid, {})
+        refs = json.dumps([a["id"] for a in used.get("automations", [])])
         facts = (row["friendly_name"] or row["name"] or "", row["unit"] or "", row["area"] or "",
                  row["device_class"] or "", row["vm_status"], cryptic_score(eid, row["friendly_name"] or row["name"] or ""))
+        device = (row["device_id"] or "", row["device_name"] or "", row["device_model"] or "", row["platform"] or "")
         if eid in existing:
             glossary.execute("UPDATE entries SET friendly_name=?, unit=?, area=?, device_class=?, vm_status=?, cryptic=?, "
-                             "active=1, referenced_by=? WHERE entity_id=?", (*facts, refs, eid))
+                             "device_id=?, device_name=?, device_model=?, platform=?, usage=?, "
+                             "active=1, referenced_by=? WHERE entity_id=?",
+                             (*facts, *device, json.dumps(used), refs, eid))
             updated += 1
         else:
             text = draft_text({**row, "friendly_name": facts[0]})
             glossary.execute("INSERT INTO entries(entity_id, friendly_name, unit, area, device_class, vm_status, cryptic, "
+                             "device_id, device_name, device_model, platform, usage, "
                              "active, referenced_by, meaning, aliases, status, source, drafted_at, updated_at) "
-                             "VALUES (?,?,?,?,?,?,?,1,?,?,?,?,?,?,?)",
-                             (eid, *facts, refs, text, "[]", "draft", "generated", now, now))
+                             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?,?,?,?)",
+                             (eid, *facts, *device, json.dumps(used), refs, text, "[]", "draft", "generated", now, now))
             glossary.execute("INSERT INTO versions(entity_id, ts, meaning, aliases, status, by, source) VALUES (?,?,?,?,?,?,?)",
                              (eid, now, text, "[]", "draft", "catalog", "generated"))
             added += 1
@@ -176,21 +185,37 @@ def owner_update(glossary, entity_id: str, by: str, meaning: str | None = None, 
     return get(glossary, entity_id)
 
 
-def _present(row: sqlite3.Row) -> dict:
+def _present(row: sqlite3.Row, same_device: list[str] | None = None) -> dict:
     out = dict(row)
     out["aliases"] = json.loads(out["aliases"] or "[]")
     out["referenced_by"] = json.loads(out["referenced_by"] or "[]")
+    out["usage"] = json.loads(out["usage"] or "{}")
     out["active"] = bool(out["active"])
+    out["same_device"] = same_device or []
     return out
 
 
+def _device_groups(glossary) -> dict[str, list[str]]:
+    groups: dict[str, list[str]] = {}
+    for r in glossary.execute("SELECT entity_id, device_id FROM entries WHERE active=1 AND device_id != '' "
+                              "AND device_id IS NOT NULL ORDER BY entity_id"):
+        groups.setdefault(r["device_id"], []).append(r["entity_id"])
+    return groups
+
+
+def _siblings(groups: dict[str, list[str]], row: sqlite3.Row) -> list[str]:
+    return [e for e in groups.get(row["device_id"] or "", []) if e != row["entity_id"]]
+
+
 def get(glossary, entity_id: str) -> dict:
-    return _present(_get(glossary, entity_id))
+    row = _get(glossary, entity_id)
+    return _present(row, _siblings(_device_groups(glossary), row))
 
 
 def list_entries(glossary, status: str | None = None, q: str | None = None, active_only: bool = True) -> list[dict]:
     rows = glossary.execute("SELECT * FROM entries ORDER BY cryptic DESC, entity_id").fetchall()
-    out = [_present(r) for r in rows]
+    groups = _device_groups(glossary)
+    out = [_present(r, _siblings(groups, r)) for r in rows]
     if active_only:
         out = [e for e in out if e["active"]]
     if status:
@@ -198,7 +223,7 @@ def list_entries(glossary, status: str | None = None, q: str | None = None, acti
     if q:
         needle = q.lower()
         out = [e for e in out if needle in " ".join([e["entity_id"], e["friendly_name"] or "", e["meaning"] or "",
-                                                     " ".join(e["aliases"])]).lower()]
+                                                     e["device_name"] or "", " ".join(e["aliases"])]).lower()]
     return out
 
 

@@ -154,3 +154,10 @@ peer is the Supervisor's ingress proxy (`172.30.32.2`, which Home Assistant has 
 its login); headers such as `X-Ingress-Path` or `X-Forwarded-For` are ignored. The API key may read
 the glossary and `POST /glossary/drafts`, which only writes drafts and cannot touch approved
 entries. `GET /glossary` with `X-As-Of` returns only what was approved by that time.
+
+### Where an entity is used
+
+Glossary entries also carry the device the entity belongs to (name, manufacturer and model, and the
+other entities on that device) and, from the config snapshot, the automations, scripts, scenes and
+dashboards that reference it (`GET /snapshot/entity-usage`). Take a snapshot first, then run the
+catalog (`POST /catalog/run`) to refresh the glossary.

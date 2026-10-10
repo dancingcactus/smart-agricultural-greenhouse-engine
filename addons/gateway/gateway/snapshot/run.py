@@ -65,6 +65,9 @@ def run(ha, config_dir: Path, mirror_dir: Path, protected: list[str], extra_scan
         catalog.mkdir(exist_ok=True)
         (catalog / "automations.json").write_text(json.dumps(built["automations"], indent=1, sort_keys=True))
         (catalog / "entity_references.json").write_text(json.dumps(built["entity_references"], indent=1, sort_keys=True))
+        known = {s["entity_id"] for s in ha.states()}
+        usage = automations.build_usage(staging, known, built["automations"])
+        (catalog / "entity_usage.json").write_text(json.dumps(usage, indent=1, sort_keys=True))
 
         search_for, short = secrets.needles(secrets.load_secret_values(config_dir) + secrets.env_values())
         hits = secrets.scan([staging, *(extra_scan_roots or [])], search_for)

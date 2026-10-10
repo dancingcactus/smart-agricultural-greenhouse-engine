@@ -19,7 +19,11 @@ def make_catalog(path, extra=()):
     ents = {
         "sensor.indoor_outdoor_meter_0cc7_temperature": EntityRecord(
             "sensor.indoor_outdoor_meter_0cc7_temperature", friendly_name="GAHT Exit Temperature", unit="°F",
-            device_class="temperature", area="Greenhouse", vm_status="ok", has_state=True),
+            device_class="temperature", area="Greenhouse", vm_status="ok", has_state=True, device_id="dev1",
+            device_name="Indoor/Outdoor Meter", device_model="Acme M1", platform="bluetooth"),
+        "sensor.indoor_outdoor_meter_0cc7_battery": EntityRecord(
+            "sensor.indoor_outdoor_meter_0cc7_battery", friendly_name="GAHT Exit Battery", unit="%", vm_status="ok",
+            device_id="dev1", device_name="Indoor/Outdoor Meter", device_model="Acme M1"),
         "sensor.gh_humidity": EntityRecord("sensor.gh_humidity", friendly_name="GH Humidity", unit="%", vm_status="ok"),
         "input_number.hot_alarm_temp": EntityRecord("input_number.hot_alarm_temp", friendly_name="Hot Alarm Temp",
                                                     vm_status="mirrored"),
@@ -35,11 +39,16 @@ def make_catalog(path, extra=()):
     return conn
 
 
+USAGE = {"input_number.hot_alarm_temp": {
+    "automations": [{"id": "automation.vent", "name": "Vent when hot"}],
+    "dashboards": [{"id": "dashboard_greenhouse", "name": "Greenhouse"}]}}
+
+
 @pytest.fixture
 def g(tmp_path):
     cat = make_catalog(tmp_path / "c.sqlite3")
     glossary = store.connect(str(tmp_path / "g.sqlite3"))
-    store.sync(cat, glossary, {"input_number.hot_alarm_temp": ["automation.vent"]}, now=T0)
+    store.sync(cat, glossary, USAGE, now=T0)
     yield glossary
     glossary.close()
     cat.close()
@@ -57,12 +66,26 @@ def test_cryptic_score_and_draft_text():
 
 def test_sync_drafts_only_eligible_entities_and_sorts_cryptic_first(g):
     entries = store.list_entries(g)
-    assert entries[0]["entity_id"] == "sensor.indoor_outdoor_meter_0cc7_temperature"
+    # both meter entities carry the hex device suffix, so both rank above the self-explanatory ones
+    assert {e["entity_id"] for e in entries[:2]} == {"sensor.indoor_outdoor_meter_0cc7_temperature",
+                                                      "sensor.indoor_outdoor_meter_0cc7_battery"}
+    assert entries[0]["cryptic"] >= entries[-1]["cryptic"]
     assert {e["entity_id"] for e in entries} == {"sensor.indoor_outdoor_meter_0cc7_temperature", "sensor.gh_humidity",
-                                                  "input_number.hot_alarm_temp"}
+                                                  "sensor.indoor_outdoor_meter_0cc7_battery", "input_number.hot_alarm_temp"}
     first = store.get(g, "sensor.indoor_outdoor_meter_0cc7_temperature")
     assert first["status"] == "draft" and first["source"] == "generated" and first["approved_by"] is None
-    assert store.get(g, "input_number.hot_alarm_temp")["referenced_by"] == ["automation.vent"]
+    used = store.get(g, "input_number.hot_alarm_temp")
+    assert used["referenced_by"] == ["automation.vent"] and used["usage"] == USAGE["input_number.hot_alarm_temp"]
+
+
+def test_entries_say_which_device_they_belong_to_and_who_shares_it(g):
+    temp = store.get(g, "sensor.indoor_outdoor_meter_0cc7_temperature")
+    assert (temp["device_name"], temp["device_model"], temp["platform"]) == ("Indoor/Outdoor Meter", "Acme M1", "bluetooth")
+    assert temp["same_device"] == ["sensor.indoor_outdoor_meter_0cc7_battery"]
+    assert store.get(g, "sensor.indoor_outdoor_meter_0cc7_battery")["same_device"] == ["sensor.indoor_outdoor_meter_0cc7_temperature"]
+    assert store.get(g, "sensor.gh_humidity")["same_device"] == [] and store.get(g, "sensor.gh_humidity")["usage"] == {}
+    by_device = store.list_entries(g, q="indoor/outdoor")
+    assert len(by_device) == 2  # the device name is searchable
 
 
 def test_resync_never_overwrites_owner_text_and_deactivates_gone_entities(tmp_path, g):
@@ -71,7 +94,7 @@ def test_resync_never_overwrites_owner_text_and_deactivates_gone_entities(tmp_pa
     cat.execute("UPDATE entities SET friendly_name='Renamed' WHERE entity_id='sensor.gh_humidity'")
     cat.execute("UPDATE entities SET vm_status='missing' WHERE entity_id='input_number.hot_alarm_temp'")
     out = store.sync(cat, g, now=T0 + 10)
-    assert out == {"added": 0, "updated": 2, "deactivated": 1}
+    assert out == {"added": 0, "updated": 3, "deactivated": 1}
     kept = store.get(g, "sensor.gh_humidity")
     assert kept["meaning"] == "Humidity at basket height, zone 1" and kept["status"] == "approved"
     assert kept["friendly_name"] == "Renamed"  # facts refresh; the owner's words do not change
@@ -225,9 +248,39 @@ def test_sync_from_env_uses_the_catalog_database(tmp_path, monkeypatch):
     monkeypatch.setenv("CATALOG_DB", str(tmp_path / "c.sqlite3"))
     monkeypatch.setenv("GLOSSARY_DB", str(tmp_path / "g.sqlite3"))
     monkeypatch.setenv("MIRROR_DIR", str(tmp_path / "no-mirror"))
-    assert sync.sync_from_env()["added"] == 3
+    assert sync.sync_from_env()["added"] == 4
 
 
 def test_ingress_is_configured():
     cfg = yaml.safe_load(Path("config.yaml").read_text())
     assert cfg["ingress"] is True and cfg["ingress_port"] == 8099 and cfg["panel_admin"] is True
+
+
+def test_older_glossary_databases_are_upgraded(tmp_path):
+    import sqlite3
+    path = tmp_path / "old.sqlite3"
+    old = sqlite3.connect(path)
+    old.executescript(store.SCHEMA)  # the first release had none of the device or usage columns, so drop them
+    old.executescript("ALTER TABLE entries RENAME TO e2; CREATE TABLE entries AS SELECT entity_id, friendly_name, unit, "
+                      "area, device_class, vm_status, active, cryptic, referenced_by, meaning, aliases, status, source, "
+                      "drafted_at, updated_at, updated_by, approved_at, approved_by FROM e2; DROP TABLE e2;")
+    old.close()
+    conn = store.connect(str(path))
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(entries)")}
+    assert {"device_id", "device_name", "device_model", "platform", "usage"} <= cols
+
+
+def test_usage_falls_back_to_the_older_references_file(tmp_path, monkeypatch):
+    from gateway.snapshot import gitmirror
+    stage, repo = tmp_path / "stage", tmp_path / "mirror"
+    (stage / "catalog").mkdir(parents=True)
+    (stage / "catalog/entity_references.json").write_text(json.dumps({"sensor.gh_humidity": ["automation.vent"]}))
+    gitmirror.sync_and_commit(stage, repo, "old format", 1.0)
+    monkeypatch.setenv("MIRROR_DIR", str(repo))
+    assert sync._usage() == {"sensor.gh_humidity": {"automations": [{"id": "automation.vent", "name": "automation.vent"}]}}
+    monkeypatch.setenv("MIRROR_DIR", str(tmp_path / "none"))
+    assert sync._usage() == {}
+
+
+def test_panel_shows_devices_and_where_used():
+    assert "Same device" in PAGE and "Used in" in PAGE and "device: " in PAGE

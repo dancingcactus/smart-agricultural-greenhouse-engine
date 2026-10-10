@@ -338,3 +338,31 @@ def test_api_reports_a_leak_without_the_value(api, cfg):
     assert resp.status_code == 422 and "abcd" not in resp.text
     assert resp.json()["detail"]["hits"][0]["path"] == "packages/notify.yaml"
     assert api.get("/snapshot/status").json()["ok"] is False
+
+
+def test_usage_covers_scripts_scenes_dashboards_and_automations(cfg, tmp_path):
+    write(cfg, "scripts.yaml", "water_plants:\n  alias: Water the plants\n  sequence:\n"
+                               "    - action: switch.turn_on\n      target: {entity_id: switch.second_fan}\n")
+    write(cfg, "scenes.yaml", "- id: s1\n  name: Night mode\n  entities:\n    cover.vent: closed\n    switch.heater: 'off'\n")
+    write(cfg, ".storage/lovelace.dashboard_greenhouse",
+          '{"data": {"config": {"title": "Greenhouse", "views": [{"cards": [{"entity": "sensor.gh_temperature"}]}]}}}')
+    write(cfg, ".storage/lovelace_dashboards", '{"data": {"items": [{"id": "x"}]}}')
+    stage = tmp_path / "stage"
+    files.copy_allowlisted(cfg, stage)
+    built = automations.build(stage, STATES, REGISTRY, LABELS, [])
+    known = {s["entity_id"] for s in STATES}
+    usage = automations.build_usage(stage, known, built["automations"])
+    fan = usage["switch.second_fan"]
+    assert [a["name"] for a in fan["automations"]] == ["Vent when hot"]
+    assert fan["scripts"] == [{"id": "script.water_plants", "name": "Water the plants"}]
+    assert usage["cover.vent"]["scenes"] == [{"id": "s1", "name": "Night mode"}]
+    assert usage["sensor.gh_temperature"]["dashboards"] == [{"id": "dashboard_greenhouse", "name": "Greenhouse"}]
+    assert "scripts" not in usage["input_number.hot_alarm_temp"]  # only the kinds that really use it appear
+
+
+def test_snapshot_writes_and_serves_the_usage_catalog(api):
+    api.post("/snapshot/run")
+    everything = api.get("/snapshot/entity-usage").json()
+    assert everything["cover.vent"]["automations"][0]["name"] == "Vent when hot"
+    assert api.get("/snapshot/entity-usage", params={"entity_id": "cover.vent"}).json() == everything["cover.vent"]
+    assert api.get("/snapshot/entity-usage", params={"entity_id": "sensor.nothing"}).json() == {}

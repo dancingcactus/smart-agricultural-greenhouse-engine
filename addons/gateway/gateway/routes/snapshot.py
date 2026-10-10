@@ -93,6 +93,13 @@ def automation(key: str, as_of_ts: float | None = Depends(as_of)):
     raise HTTPException(404, "no such automation in that snapshot")
 
 
+@router.get("/entity-usage")
+def entity_usage(entity_id: str | None = None, as_of_ts: float | None = Depends(as_of)):
+    """Where each entity is used: automations, scripts, scenes and dashboards."""
+    usage = _json_file(_rev(as_of_ts), "catalog/entity_usage.json")
+    return usage.get(entity_id, {}) if entity_id else usage
+
+
 @router.get("/entity-references")
 def entity_references(entity_id: str | None = None, as_of_ts: float | None = Depends(as_of)):
     """Which automations reference each entity (or one entity)."""

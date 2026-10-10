@@ -37,7 +37,8 @@ def connect(path: str | Path) -> sqlite3.Connection:
     conn.executescript(SCHEMA)
     # Databases created by earlier versions lack the newer columns.
     _ensure_columns(conn, "entities", {"has_state": "INTEGER", "vm_reason": "TEXT", "mirror_of": "TEXT",
-                                      "mirrored_by": "TEXT"})
+                                      "mirrored_by": "TEXT", "device_name": "TEXT",
+                                      "device_model": "TEXT"})
     _ensure_columns(conn, "series", {"field": "TEXT", "kind": "TEXT", "history_first_seen": "REAL"})
     return conn
 
@@ -69,12 +70,13 @@ def save_run(
     conn.executemany(
         "INSERT INTO entities(run_id, entity_id, name, friendly_name, labels, icon, platform, "
         "device_id, area, unit, device_class, state_class, disabled, in_registry, vm_status, "
-        "has_state, vm_reason, mirror_of, mirrored_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "has_state, vm_reason, mirror_of, mirrored_by, device_name, device_model) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [
             (run_id, e.entity_id, e.name, e.friendly_name, json.dumps(e.labels), e.icon, e.platform,
              e.device_id, e.area, e.unit, e.device_class, e.state_class, int(e.disabled),
              int(e.in_registry), e.vm_status, int(e.has_state), e.vm_reason, e.mirror_of,
-             e.mirrored_by)
+             e.mirrored_by, e.device_name, e.device_model)
             for e in ents
         ],
     )
@@ -191,7 +193,7 @@ def export(conn: sqlite3.Connection, out_dir: str | Path) -> list[Path]:
     jsonl, csv_path = out / "entity_metrics.jsonl", out / "entity_metrics.csv"
     entity_cols = ["entity_id", "name", "friendly_name", "labels", "icon", "area", "unit",
                    "device_class", "disabled", "has_state", "vm_status", "vm_reason", "mirror_of",
-                   "mirrored_by"]
+                   "mirrored_by", "device_name", "device_model"]
     series_cols = ["metric", "field", "kind", "selector", "first_seen", "history_first_seen",
                    "last_seen", "samples", "avg_interval_s"]
     fields = entity_cols + series_cols

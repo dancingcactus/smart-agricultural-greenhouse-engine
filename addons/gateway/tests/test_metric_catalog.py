@@ -191,3 +191,24 @@ def test_history_first_seen_and_string_only(tmp_path):
     assert value.first_seen == NOW - 30 * 86400
     assert attr.history_first_seen is None
     assert ents["sensor.zone1_temp"].vm_status == "ok"
+
+
+def test_devices_are_attached_to_entities():
+    class HAWithDevices(FakeHA):
+        def ws_list(self, cmd):
+            if cmd == "config/device_registry/list":
+                return [{"id": "dev1", "area_id": "zone1", "name": "Meter", "name_by_user": "GAHT Exit Meter",
+                         "manufacturer": "Acme", "model": "M1"},
+                        {"id": "dev2", "name": "Plain", "manufacturer": None, "model": "X"}]
+            if cmd == "config/entity_registry/list":
+                return [{"entity_id": "sensor.a", "device_id": "dev1"}, {"entity_id": "sensor.b", "device_id": "dev2"},
+                        {"entity_id": "sensor.c"}]
+            return super().ws_list(cmd)
+
+        def states(self):
+            return []
+
+    ents = collect_entities(HAWithDevices())
+    assert (ents["sensor.a"].device_name, ents["sensor.a"].device_model) == ("GAHT Exit Meter", "Acme M1")  # user's name wins
+    assert (ents["sensor.b"].device_name, ents["sensor.b"].device_model) == ("Plain", "X")
+    assert (ents["sensor.c"].device_name, ents["sensor.c"].device_model) == ("", "")

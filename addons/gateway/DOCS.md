@@ -136,6 +136,12 @@ Open the **Greenhouse** item in the Home Assistant sidebar to review: filter by 
 meaning and aliases, then **Approve**, **Save as draft** or **Reject**. Entities whose names look
 cryptic (hex suffixes, numbered duplicates) are listed first.
 
+**Where an entity is used:** each entry shows the device it belongs to (name, manufacturer and
+model, and the other entities on the same device), and the automations, scripts, scenes and
+dashboards that reference it, with their names. The "used in" part comes from the configuration
+snapshot, so turn that on and take a snapshot (`POST /snapshot/run`) first; it appears in the glossary
+after the next catalog run. `GET /snapshot/entity-usage` returns the same data.
+
 **Who can approve:** only requests that arrive through the sidebar panel, which Home Assistant has
 already authenticated as an administrator. The API key can read the glossary and suggest draft
 meanings (`POST /glossary/drafts`) but can never approve, reject or change an approved entry, even if

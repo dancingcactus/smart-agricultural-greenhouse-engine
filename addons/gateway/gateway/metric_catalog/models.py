@@ -19,6 +19,8 @@ class EntityRecord:
     disabled: bool = False
     in_registry: bool = False
     has_state: bool = False
+    device_name: str = ""
+    device_model: str = ""  # manufacturer and model
     mirror_of: str = ""  # for a snapshot sensor: the helper it copies
     mirrored_by: str = ""  # for a helper: the snapshot sensor that records it
     vm_status: str = "missing"  # ok | string_only | mirrored | missing | orphan | ignored

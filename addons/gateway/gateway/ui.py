@@ -23,6 +23,8 @@ button:disabled { opacity:.5; cursor:not-allowed; } .banner { padding:10px 12px;
 .chip.rejected { color:var(--bad); } textarea { width:100%; min-height:62px; resize:vertical; } .row { display:flex;
         gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center; } .row input { flex:1; min-width:160px; }
 .small { color:var(--muted); font-size:.8rem; } .msg { margin-left:auto; }
+details { margin:6px 0; font-size:.88rem; } summary { cursor:pointer; color:var(--muted); }
+details ul { margin:4px 0 0; padding-left:20px; } details li { margin:1px 0; }
 </style></head><body>
 <h1>Entity glossary</h1>
 <p class="sub">Say, in your own words, what each entity is and why it matters. Approved entries are what the
@@ -42,6 +44,31 @@ async function api(path, options) {
   return r.json();
 }
 function chip(text, cls) { const s = document.createElement("span"); s.className = "chip " + (cls || ""); s.textContent = text; return s; }
+const KINDS = [["automations", "Automations"], ["scripts", "Scripts"], ["scenes", "Scenes"], ["dashboards", "Dashboards"]];
+function usageBlock(e) {
+  const wrap = document.createElement("div");
+  const total = KINDS.reduce((n, [k]) => n + (e.usage[k] || []).length, 0);
+  if (total) {
+    const d = document.createElement("details"); const s = document.createElement("summary");
+    s.textContent = "Used in " + total + " place" + (total === 1 ? "" : "s"); d.append(s);
+    for (const [k, label] of KINDS) {
+      if (!(e.usage[k] || []).length) continue;
+      const h = document.createElement("div"); h.className = "small"; h.textContent = label; d.append(h);
+      const ul = document.createElement("ul");
+      for (const u of e.usage[k]) { const li = document.createElement("li"); li.textContent = u.name; ul.append(li); }
+      d.append(ul);
+    }
+    wrap.append(d);
+  }
+  if (e.same_device.length) {
+    const d = document.createElement("details"); const s = document.createElement("summary");
+    s.textContent = "Same device: " + e.same_device.length + " other entit" + (e.same_device.length === 1 ? "y" : "ies"); d.append(s);
+    const ul = document.createElement("ul");
+    for (const id of e.same_device) { const li = document.createElement("li"); li.textContent = id; ul.append(li); }
+    d.append(ul); wrap.append(d);
+  }
+  return wrap;
+}
 function render(entries) {
   const list = $("list"); list.replaceChildren();
   $("count").textContent = entries.length + " shown";
@@ -53,7 +80,8 @@ function render(entries) {
     meta.append(chip(e.status, e.status));
     if (e.unit) meta.append(chip(e.unit)); if (e.area) meta.append(chip(e.area));
     if (e.device_class) meta.append(chip(e.device_class));
-    if (e.referenced_by.length) meta.append(chip("used by " + e.referenced_by.length + " automation(s)"));
+    if (e.device_name) meta.append(chip("device: " + e.device_name + (e.device_model ? " (" + e.device_model + ")" : "")));
+    else if (e.platform) meta.append(chip(e.platform));
     if (e.cryptic >= 0.5) meta.append(chip("name may be cryptic"));
     if (e.approved_by) meta.append(chip("approved by " + e.approved_by));
     const text = document.createElement("textarea"); text.value = e.meaning || ""; text.disabled = !owner;
@@ -76,7 +104,7 @@ function render(entries) {
     }
     row.append(aliases, msg);
     const top = document.createElement("div"); top.append(h, id);
-    card.append(top, meta, text, row); list.append(card);
+    card.append(top, meta, usageBlock(e), text, row); list.append(card);
   }
   if (!entries.length) list.textContent = "Nothing here.";
 }

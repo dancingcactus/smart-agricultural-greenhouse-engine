@@ -7,6 +7,14 @@ from gateway.ha_client import HAClient
 from .models import EntityRecord
 
 
+def _device_name(device: dict | None) -> str:
+    return (device.get("name_by_user") or device.get("name") or "") if device else ""
+
+
+def _device_model(device: dict | None) -> str:
+    return " ".join(x for x in ((device or {}).get("manufacturer"), (device or {}).get("model")) if x)
+
+
 def collect_entities(ha: HAClient) -> dict[str, EntityRecord]:
     label_names = {
         lab["label_id"]: lab.get("name", lab["label_id"]) for lab in ha.ws_list("config/label_registry/list")
@@ -25,6 +33,8 @@ def collect_entities(ha: HAClient) -> dict[str, EntityRecord]:
             icon=reg.get("icon") or reg.get("original_icon") or "",
             platform=reg.get("platform") or "",
             device_id=reg.get("device_id") or "",
+            device_name=_device_name(devices.get(reg.get("device_id") or "")),
+            device_model=_device_model(devices.get(reg.get("device_id") or "")),
             area=area_names.get(area_id, "") if area_id else "",
             device_class=reg.get("device_class") or reg.get("original_device_class") or "",
             disabled=bool(reg.get("disabled_by")),
