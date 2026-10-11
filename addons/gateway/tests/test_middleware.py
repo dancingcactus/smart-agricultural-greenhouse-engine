@@ -34,7 +34,7 @@ def test_no_route_can_call_a_service(client):
     writes = {(p, m) for p, m in allowed if m != "get"}
     # Nothing else can write, and none are missing. Each only changes this add-on's own data.
     assert writes == {(p, "post") for p in ALLOWED_POSTS} | {("/glossary/{entity_id}", "put")}
-    assert ALLOWED_POSTS == {"/catalog/run", "/snapshot/run", "/glossary/drafts", "/runs"}
+    assert ALLOWED_POSTS == {"/catalog/run", "/snapshot/run", "/glossary/drafts", "/glossary/roles", "/runs"}
 
 
 def test_api_key_enforced_and_health_open(client, monkeypatch):

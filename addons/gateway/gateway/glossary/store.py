@@ -268,3 +268,33 @@ def roles(glossary, as_of: float | None = None, include_drafts: bool = False) ->
                 out.setdefault(alias[len(ROLE_PREFIX):], []).append(
                     {"entity_id": eid, "meaning": meaning[eid], "status": status[eid]})
     return dict(sorted(out.items()))
+
+
+def import_roles(glossary, roles: dict, source: str = "agent") -> list[dict]:
+    """Add role aliases to entries as drafts. Role name -> entity id or list of ids.
+
+    Never approves, and skips entries an owner already approved (they are changed in the panel).
+    One result row per entity: drafted / skipped / error, so a bad line does not stop the rest.
+    """
+    wanted: dict[str, list[str]] = {}
+    results: list[dict] = []
+    for name, entities in roles.items():
+        alias = f"{ROLE_PREFIX}{str(name).strip().lower()}"
+        if not ROLE_RE.match(alias):
+            results.append({"role": name, "result": "error", "detail": "not a valid role name"})
+            continue
+        for eid in [entities] if isinstance(entities, str) else list(entities):
+            wanted.setdefault(eid.strip(), []).append(alias)
+    for eid, aliases in sorted(wanted.items()):
+        try:
+            row = _get(glossary, eid)
+            if row["status"] == "approved":
+                results.append({"entity_id": eid, "result": "skipped", "detail": "already approved: add the alias in the panel"})
+                continue
+            merged = list(dict.fromkeys([*json.loads(row["aliases"] or "[]"), *aliases]))
+            meaning = row["meaning"] or f"Used as: {', '.join(a[len(ROLE_PREFIX):] for a in aliases)}."
+            propose(glossary, eid, meaning, merged, source)
+            results.append({"entity_id": eid, "result": "drafted", "roles": aliases})
+        except GlossaryError as exc:
+            results.append({"entity_id": eid, "result": "error", "detail": str(exc)})
+    return results

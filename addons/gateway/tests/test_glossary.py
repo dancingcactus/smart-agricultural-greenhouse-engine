@@ -322,3 +322,21 @@ def test_roles_as_of_ignore_later_approvals(web, tmp_path):
         assert "greenhouse_humidity" in store.roles(conn, as_of=time.time() + 10)
     finally:
         conn.close()
+
+
+def test_import_roles_drafts_merges_aliases_and_skips_approved(web):
+    agent, owner, key = web
+    approved = "input_number.hot_alarm_temp"
+    owner.put(f"/glossary/{approved}", json={"meaning": "Hot limit", "status": "approved"})
+    owner.put(f"/glossary/{EID}", json={"aliases": ["GH RH"]})
+    out = agent.post("/glossary/roles", headers=key, json={"roles": {
+        "greenhouse_humidity": EID, "alarm_hot": [approved], "Bad Name": "sensor.x", "nope": "sensor.not_in_glossary"}})
+    assert out.status_code == 200
+    by = {r.get("entity_id") or r["role"]: r for r in out.json()}
+    assert by[EID]["result"] == "drafted"
+    assert by[approved]["result"] == "skipped"
+    assert by["Bad Name"]["result"] == "error" and by["sensor.not_in_glossary"]["result"] == "error"
+    entry = agent.get(f"/glossary/{EID}", headers=key).json()
+    assert entry["status"] == "draft" and entry["aliases"] == ["GH RH", "role:greenhouse_humidity"]
+    assert "greenhouse_humidity" not in agent.get("/glossary/roles", headers=key).json()  # drafts stay hidden
+    assert owner.get("/glossary/whoami").json()["owner"]

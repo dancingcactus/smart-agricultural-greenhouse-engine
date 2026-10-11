@@ -63,8 +63,9 @@ links to that address.
    Import (the public `owui/presets/sage-presets.json` is generic and has no entity ids). Install the tool and the filter first; the presets refer to
    them by id (`sage_gateway`, `sage_run_log`).
 5. **Roles.** In the SAGE panel (Home Assistant sidebar) give entities role aliases such as
-   `role:greenhouse_temperature` (see `docs/roles.md`). To enter a first set as drafts, run
-   `GATEWAY_URL=... GATEWAY_KEY=... python3 scripts/seed_roles.py roles.yaml`, then approve them in the panel.
+   `role:greenhouse_temperature` (see `docs/roles.md`). To enter a first set, open the panel's **Import roles**
+   box, paste the lines of `roles.yaml` (`role_name: entity_id`), click Import, then approve the drafts below.
+   (`scripts/seed_roles.py` does the same from a terminal.)
 6. **Try it.** Start a chat with a SAGE model, switch on the SAGE Gateway tool and the terminal, and
    ask: *"Find the sensors that measure humidity and tell me how they are recorded."*
 

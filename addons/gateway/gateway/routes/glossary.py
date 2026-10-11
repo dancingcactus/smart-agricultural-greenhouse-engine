@@ -20,6 +20,10 @@ class Draft(BaseModel):
     aliases: list[str] | None = None
 
 
+class RoleImport(BaseModel):
+    roles: dict[str, str | list[str]]
+
+
 class OwnerEdit(BaseModel):
     meaning: str | None = Field(default=None, max_length=store.MAX_MEANING)
     aliases: list[str] | None = None
@@ -69,6 +73,16 @@ def roles(include_drafts: bool = False, as_of_ts: float | None = Depends(as_of))
     conn = _conn()
     try:
         return store.roles(conn, as_of_ts, include_drafts and as_of_ts is None)
+    finally:
+        conn.close()
+
+
+@router.post("/roles")
+def import_roles(body: RoleImport):
+    """Add role aliases to entries as drafts (never approved; approved entries are skipped). Owners approve in the panel."""
+    conn = _conn()
+    try:
+        return store.import_roles(conn, body.roles)
     finally:
         conn.close()
 

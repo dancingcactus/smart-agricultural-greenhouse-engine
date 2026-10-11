@@ -32,6 +32,12 @@ agent is told to trust; drafts are only suggestions. An alias such as <code>role
 names the job an entity does, so the agent and the watch can find it.</p>
 <div id="banner" class="banner" hidden>You opened this page outside Home Assistant, so it is read-only. Open it from the
 Greenhouse item in the Home Assistant sidebar to approve or edit entries.</div>
+<details id="importer" class="entry"><summary>Import roles</summary>
+<p class="small">One role per line as <code>role_name: entity_id</code> (several entities separated by commas). Lines starting
+with # are ignored. Each becomes a draft with a <code>role:</code> alias; approve it below.</p>
+<textarea id="roletext" rows="8" placeholder="greenhouse_temperature: sensor.temp5"></textarea>
+<div class="row"><button id="roleimport" class="primary">Import as drafts</button><span id="roleresult" class="small"></span></div>
+<pre id="roledetail" class="small" hidden></pre></details>
 <div class="bar"><input id="q" type="search" placeholder="Filter by name, id or meaning" aria-label="Filter">
 <select id="status" aria-label="Status"><option value="draft">Needs review</option><option value="approved">Approved</option>
 <option value="rejected">Rejected</option><option value="">All</option></select><span id="count" class="small"></span></div>
@@ -113,9 +119,33 @@ async function load() {
   const p = new URLSearchParams({ q: $("q").value }); if ($("status").value) p.set("status", $("status").value);
   try { render(await api("glossary?" + p)); } catch (err) { $("list").textContent = "Could not load: " + err.message; }
 }
+function parseRoles(text) {
+  const roles = {};
+  for (const raw of text.split("\\n")) {
+    const line = raw.trim(); if (!line || line.startsWith("#")) continue;
+    const i = line.indexOf(":"); if (i < 1) continue;
+    const ids = line.slice(i + 1).split(",").map((x) => x.trim()).filter(Boolean);
+    if (ids.length) roles[line.slice(0, i).trim()] = ids;
+  }
+  return roles;
+}
+async function importRoles() {
+  const roles = parseRoles($("roletext").value);
+  if (!Object.keys(roles).length) { $("roleresult").textContent = "Nothing to import."; return; }
+  $("roleresult").textContent = "Importing…";
+  try {
+    const out = await api("glossary/roles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ roles }) });
+    const n = (k) => out.filter((r) => r.result === k).length;
+    $("roleresult").textContent = n("drafted") + " drafted, " + n("skipped") + " skipped, " + n("error") + " problems";
+    const bad = out.filter((r) => r.result !== "drafted");
+    $("roledetail").hidden = !bad.length;
+    $("roledetail").textContent = bad.map((r) => (r.entity_id || r.role) + ": " + r.detail).join("\\n");
+    $("status").value = "draft"; load();
+  } catch (err) { $("roleresult").textContent = err.message; }
+}
 (async () => {
   try { owner = (await api("glossary/whoami")).owner; } catch (err) { owner = false; }
-  $("banner").hidden = owner;
+  $("banner").hidden = owner; $("roleimport").onclick = importRoles; $("roleimport").disabled = !owner;
   $("q").oninput = () => { clearTimeout(window.t); window.t = setTimeout(load, 250); }; $("status").onchange = load;
   load();
 })();

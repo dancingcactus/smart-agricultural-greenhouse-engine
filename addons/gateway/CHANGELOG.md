@@ -4,7 +4,7 @@ All notable changes to the SAGE Gateway add-on. Versions follow `version` in `co
 
 ## 0.11.0
 
-- Roles: a glossary alias written `role:<name>` (for example `role:greenhouse_temperature`) now names the job an entity does. `GET /glossary/roles` lists each role with the approved entities that carry it (drafts with `include_drafts=true`; with an as-of time, as approved then). Malformed role aliases are refused. The SAGE panel text explains the convention, and nothing else on the page changes.
+- Roles: a glossary alias written `role:<name>` (for example `role:greenhouse_temperature`) now names the job an entity does. `GET /glossary/roles` lists each role with the approved entities that carry it (drafts with `include_drafts=true`; with an as-of time, as approved then). Malformed role aliases are refused. The SAGE panel gets an **Import roles** box: paste lines like `greenhouse_temperature: sensor.temp5` and each becomes a draft with the role alias for you to approve (entries you already approved are skipped, not changed). `POST /glossary/roles` does the same for scripts.
 
 ## 0.10.0
 

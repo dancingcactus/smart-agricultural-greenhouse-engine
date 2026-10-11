@@ -14,7 +14,7 @@ from gateway.calllog import CallLog
 from gateway.redact import redact
 
 # The gateway is read-only toward Home Assistant. These POSTs only refresh or add to its own data.
-ALLOWED_POSTS = {"/catalog/run", "/snapshot/run", "/glossary/drafts", "/runs"}
+ALLOWED_POSTS = {"/catalog/run", "/snapshot/run", "/glossary/drafts", "/glossary/roles", "/runs"}
 # Changes only an owner may make. "Owner" means the request arrived through Home Assistant's ingress
 # proxy, which has already authenticated a Home Assistant admin; the API key is never enough.
 OWNER_ONLY = (("PUT", re.compile(r"^/glossary/[a-z0-9_]+\.[a-z0-9_]+$")),)
