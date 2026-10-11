@@ -1,7 +1,7 @@
 """
 title: SAGE Gateway
 author: SAGE
-version: 0.5.0
+version: 0.5.1
 description: Read-only access to the greenhouse's data (entities, history, weather forecasts, configuration, glossary) through the SAGE Gateway. It cannot change anything in Home Assistant.
 """
 
@@ -102,6 +102,15 @@ class Gateway:
 
     def weather_observations(self, start=None, end=None, entity_id=None):
         return self.get("/weather/observations", start=start, end=end, entity_id=entity_id)
+
+    # evenly spaced history for forecasting (see greenhouse_forecast.py)
+    def history_resampled(self, entity_id=None, role=None, step="1h", start=None, end=None):
+        """Numeric history on a fixed grid: [[bucket_start_epoch, mean_or_None], ...] per entity. Give entity_id or role."""
+        return self.get("/history/resampled", entity_id=entity_id, role=role, step=step, start=start, end=end)
+
+    def history_runtime(self, entity_id=None, role=None, days=14, end=None, timezone=None):
+        """Hours switched on per local day (for example role equipment_gaht_fan), with run counts and completeness."""
+        return self.get("/history/runtime", entity_id=entity_id, role=role, days=days, end=end, timezone=timezone)
 
     # configuration snapshot and glossary
     def config_files(self):

@@ -1,5 +1,5 @@
 name: SAGE Sandbox
-version: "0.1.4"
+version: "0.2.0"
 slug: greenhouse_sandbox
 description: Sandboxed shell where the agent writes and tests its own analysis tools (Open Terminal)
 url: https://github.com/dancingcactus/smart-agricultural-greenhouse-engine

@@ -72,6 +72,7 @@ def test_webui_exposes_only_its_own_port_and_pins_its_version():
 def test_dockerfiles_wire_up_the_wrappers():
     sandbox = (SANDBOX / "Dockerfile").read_text()
     assert '"/usr/bin/tini", "--", "/run.sh"' in sandbox and "sdk/greenhouse_gateway.py" in sandbox
+    assert "sdk/greenhouse_forecast.py" in sandbox  # the forecasting helpers ship next to the gateway client
     assert "options_to_env.py" in (WEBUI / "Dockerfile").read_text()
 
 
@@ -137,6 +138,22 @@ def test_webui_environment():
 def test_webui_refuses_incomplete_options(change):
     with pytest.raises(ValueError):
         webui_env.build_env({**GOOD_WEBUI, **change})
+
+
+def test_web_search_is_off_by_default_and_runs_only_in_open_webui():
+    off = webui_env.build_env(GOOD_WEBUI)
+    assert off["ENABLE_WEB_SEARCH"] == "false" and "WEB_SEARCH_ENGINE" not in off
+    free = webui_env.build_env({**GOOD_WEBUI, "web_search_engine": "duckduckgo"})
+    assert free["ENABLE_WEB_SEARCH"] == "true" and free["WEB_SEARCH_ENGINE"] == "duckduckgo"
+    keyed = webui_env.build_env({**GOOD_WEBUI, "web_search_engine": "brave", "web_search_api_key": " bk "})
+    assert keyed["WEB_SEARCH_ENGINE"] == "brave" and keyed["BRAVE_SEARCH_API_KEY"] == "bk"
+    assert webui_env.build_env({**GOOD_WEBUI, "web_search_engine": "tavily", "web_search_api_key": "tk"})["TAVILY_API_KEY"] == "tk"
+    for bad in ({"web_search_engine": "brave"}, {"web_search_engine": "tavily", "web_search_api_key": " "},
+                {"web_search_engine": "google"}):
+        with pytest.raises(ValueError):
+            webui_env.build_env({**GOOD_WEBUI, **bad})
+    # the sandbox's firewall is unaffected by the web search option
+    assert "web_search_engine" not in config_of(SANDBOX)["options"]
 
 
 NASTY = "ab'c\"$(echo pwned)`x y\\z;&|"
@@ -238,6 +255,21 @@ def test_the_client_has_no_way_to_write_or_approve(gateway_app):
     # even by hand, the API key cannot approve
     with pytest.raises(sdk.GatewayError, match="403.*owner only"):
         gw._call("PUT", "/glossary/sensor.plug_a_power", body={"status": "approved"})
+
+
+def test_client_has_the_forecasting_history_methods(gateway_app):
+    sdk = load(SDK, "gh_sdk")
+    seen = []
+
+    def spy(method, url, headers, body):
+        seen.append(url)
+        return 200, b'{"series": []}'
+
+    gw = sdk.Gateway(URL, "k", transport=spy)
+    gw.history_resampled(role="greenhouse_temperature", step="15m", start="2026-10-01T00:00:00Z")
+    gw.history_runtime(role="equipment_gaht_fan", days=7)
+    assert "/history/resampled?role=greenhouse_temperature&step=15m&start=2026-10-01T00%3A00%3A00Z" in seen[0]
+    assert "/history/runtime?role=equipment_gaht_fan&days=7" in seen[1]
 
 
 def test_client_sends_the_as_of_time_and_caller_and_needs_a_url():

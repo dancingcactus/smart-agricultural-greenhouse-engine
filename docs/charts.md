@@ -30,5 +30,5 @@ greenhouse temperature is inside the target band (icon plus words, never colour 
 humidity set point for reference, the change over the last hour and a 24 hour sparkline. A reading with no update
 for 30 minutes, or reported unavailable, is flagged instead of presented as current.
 
-Not built yet: forecast bands, heatmaps, and commanded-versus-observed (that needs the automation that acted, from
+Not built yet: forecast bands as a chart (the numbers exist: see `docs/forecasting.md`), heatmaps, and commanded-versus-observed (that needs the automation that acted, from
 the logbook).

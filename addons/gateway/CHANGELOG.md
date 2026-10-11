@@ -2,6 +2,11 @@
 
 All notable changes to the SAGE Gateway add-on. Versions follow `version` in `config.yaml`.
 
+## 0.15.0
+
+- New `GET /history/resampled`: numeric history on a fixed grid (5 minutes to 24 hours) for the agent's forecasting helpers. Time-weighted means, `null` for gaps, whole buckets only, clipped to the as-of time. Takes `entity_id` or an approved `role`.
+- New `GET /history/runtime`: hours switched on per local day for equipment such as the GAHT fan, with runs per day and whether the day is complete.
+
 ## 0.14.0
 
 - New `GET /review/cadence`: the current mode and which loops (watch, daily, evening, weekly) it allows, so every scheduled run can exit when its loop is not due. An unrecognised mode falls back to the growing cadence and says so.
