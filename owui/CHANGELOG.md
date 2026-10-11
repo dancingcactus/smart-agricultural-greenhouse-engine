@@ -5,6 +5,7 @@ show updates for them). The version is in each file's header.
 
 ## SAGE Gateway tool (`tools/greenhouse_gateway.py`)
 
+- **0.3.0**: new `show_chart`: draws a chart of recent readings inline in the chat for the grower (roles in, picture out; the model never types the data). Lines per role, a target band for the greenhouse temperature, a hover readout, a numbers table, light and dark. It returns the figures (latest, low, high, average, share of time in the target band) for the model to quote. Needs SAGE Gateway 0.12.0 or later and approved roles.
 - **0.2.0**: new `get_roles` (which entity does which job) and `run_watch` (the code-only health checks). Needs
   SAGE Gateway 0.11.0 or later for roles and 0.12.0 for the watch.
 - **0.1.0**: first version: catalog search, history, metrics, weather, config, glossary.

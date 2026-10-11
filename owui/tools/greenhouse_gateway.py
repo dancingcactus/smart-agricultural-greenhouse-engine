@@ -1,7 +1,7 @@
 """
 title: SAGE Gateway
 author: SAGE
-version: 0.2.0
+version: 0.3.0
 description: Read-only access to the greenhouse's data (entities, history, weather forecasts, configuration, glossary) through the SAGE Gateway. It cannot change anything in Home Assistant.
 """
 
@@ -133,6 +133,7 @@ class Gateway:
                                                              "aliases": aliases})
 # --- end client ---
 
+from fastapi.responses import HTMLResponse  # noqa: E402 - provided by Open WebUI
 from pydantic import BaseModel, Field  # noqa: E402 - provided by Open WebUI
 
 _ISO = "%Y-%m-%dT%H:%M:%SZ"
@@ -177,6 +178,234 @@ def summarize_history(rows, max_changes=40):
         out[series[0].get("entity_id", "?")] = {"changes": len(changes), "first": changes[0], "last": changes[-1],
                                                 "sample": changes[:: max(1, -(-len(changes) // max_changes))]}
     return out
+
+
+# ---- charts: drawn for the grower, inline in the chat. The model only passes role names; the numbers come from the
+# gateway and the picture is built here, so the model never types data and cannot mis-quote it. -----------------------
+_SLOTS = (("greenhouse", 1), ("outside", 2), ("control_room", 3), ("gaht_input", 4), ("gaht_exit", 5))
+MAX_CHART_SERIES = 5
+_DEFAULT_UNITS = (("_temperature", "°F"), ("_humidity", "%"), ("vpd", "kPa"))
+
+
+def _epoch(value):
+    import datetime
+
+    try:
+        return datetime.datetime.fromisoformat(str(value)).timestamp()
+    except ValueError:
+        return None
+
+
+def history_points(rows, end_ts):
+    """Home Assistant history for one entity -> [[epoch_ms, number]], oldest first. Non-numeric states are dropped.
+    The last value is repeated at `end_ts` so a sensor that has not changed still reaches the right edge."""
+    points = []
+    for series in rows or []:
+        for item in series:
+            ts = _epoch(item.get("last_changed") or item.get("last_updated"))
+            try:
+                value = float(item.get("state"))
+            except (TypeError, ValueError):
+                continue
+            if ts is not None and value == value and abs(value) != float("inf"):
+                points.append([int(ts * 1000), value])
+        break  # one entity per request
+    if points and points[-1][0] < end_ts * 1000:
+        points.append([int(end_ts * 1000), points[-1][1]])
+    return points
+
+
+def downsample(points, max_points=400):
+    """Average into at most `max_points` time buckets so a week of readings stays light."""
+    if len(points) <= max_points:
+        return points
+    lo, hi = points[0][0], points[-1][0]
+    width = max(1, (hi - lo) / max_points)
+    buckets = {}
+    for t, v in points:
+        buckets.setdefault(int((t - lo) // width), []).append((t, v))
+    return [[round(sum(t for t, _ in b) / len(b)), round(sum(v for _, v in b) / len(b), 3)] for _, b in sorted(buckets.items())]
+
+
+def value_at(points, ts_ms):
+    """The last known value at or before ts_ms (a step lookup), or None."""
+    found = None
+    for t, v in points:
+        if t > ts_ms:
+            break
+        found = v
+    return found
+
+
+def band_stats(points, low, high):
+    """Share of the time the readings were below, inside and above the band (time-weighted). A reading holds until
+    the next one, and the band is read as it was at each moment, so a setpoint that moves mid-way is handled."""
+    spans = {"below": 0.0, "inside": 0.0, "above": 0.0}
+    changes = sorted({t for t, _ in low} | {t for t, _ in high})
+    for (t0, v), (t1, _) in zip(points, points[1:]):
+        cuts = [t0] + [t for t in changes if t0 < t < t1] + [t1]
+        for a, b in zip(cuts, cuts[1:]):
+            lo, hi = value_at(low, a), value_at(high, a)
+            if lo is not None and hi is not None:
+                spans["below" if v < lo else "above" if v > hi else "inside"] += b - a
+    total = sum(spans.values())
+    return None if not total else {k: round(100 * s / total, 1) for k, s in spans.items()}
+
+
+def series_stats(points):
+    values = [v for _, v in points]
+    return {"latest": values[-1], "min": min(values), "max": max(values), "mean": round(sum(values) / len(values), 2),
+            "points": len(values)}
+
+
+def assign_slots(roles):
+    """A fixed colour per kind of sensor, so 'greenhouse' is always the same colour from chart to chart."""
+    slots, used = {}, set()
+    for role in roles:
+        slot = next((s for prefix, s in _SLOTS if role.startswith(prefix) and s not in used), None)
+        if slot:
+            slots[role] = slot
+            used.add(slot)
+    free = iter(s for s in range(1, 9) if s not in used)
+    for role in roles:
+        if role not in slots:
+            slots[role] = next(free)
+    return slots
+
+
+def build_chart_spec(title, start_ts, end_ts, series, bands):
+    """series: [{role, entity_id, unit, points}]; bands: {unit: {"low": pts, "high": pts}}. One panel per unit,
+    never a second axis on the same panel."""
+    slots = assign_slots([s["role"] for s in series])
+    panels = {}
+    for s in series:
+        panel = panels.setdefault(s["unit"], {"unit": s["unit"], "series": [], "band": None})
+        panel["series"].append({"role": s["role"], "label": s["role"].replace("_", " ").capitalize(),
+                                "entity_id": s["entity_id"], "slot": slots[s["role"]], "stats": series_stats(s["points"]),
+                                "points": downsample(s["points"])})
+        band = bands.get(s["unit"])
+        if band and s["role"] == "greenhouse_temperature":
+            panel["band"] = {"label": "Target band", "low": band["low"], "high": band["high"],
+                             "stats": band_stats(s["points"], band["low"], band["high"])}
+    return {"title": title, "start": int(start_ts * 1000), "end": int(end_ts * 1000), "panels": list(panels.values())}
+
+
+_CHART_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{color-scheme:light dark;--bg:#fcfcfb;--fg:#0b0b0b;--muted:#52514e;--grid:#e3e2de;--band:rgba(80,120,160,.14);
+--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948}
+@media (prefers-color-scheme:dark){:root{--bg:#1a1a19;--fg:#f0efec;--muted:#c3c2b7;--grid:#34342f;--band:rgba(120,160,200,.16);
+--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767}}
+*{box-sizing:border-box}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--fg)}
+#root{background:var(--bg);border:1px solid var(--grid);border-radius:12px;padding:12px 14px}
+h1{font-size:1rem;margin:0 0 2px}.sub{color:var(--muted);font-size:.8rem}.legend{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0;font-size:.85rem}
+.legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.panel{position:relative;margin-top:8px;outline-offset:2px}.panel .unit{color:var(--muted);font-size:.75rem}
+svg{display:block;width:100%;overflow:visible}.axis{fill:var(--muted);font-size:11px}
+.tip{position:absolute;z-index:5;pointer-events:none;background:var(--bg);border:1px solid var(--grid);border-radius:6px;padding:6px 9px;
+font-size:.8rem;box-shadow:0 2px 8px rgba(0,0,0,.2);min-width:150px}.tip .t{color:var(--muted);font-size:.72rem;margin-bottom:2px}
+.tip .r{display:flex;align-items:center;gap:6px}.tip .r i{width:14px;border-top:3px solid;display:inline-block}.tip .r b{margin-left:auto;padding-left:10px}
+details{margin-top:8px;font-size:.82rem;color:var(--muted)}table{border-collapse:collapse;margin-top:4px;width:100%}
+td,th{text-align:right;padding:2px 8px;border-bottom:1px solid var(--grid);white-space:nowrap}td:first-child,th:first-child{text-align:left}
+</style></head><body><div id="root"></div>
+<script id="spec" type="application/json">__SPEC__</script>
+<script>
+(() => {
+const spec = JSON.parse(document.getElementById('spec').textContent);
+const NS = 'http://www.w3.org/2000/svg', root = document.getElementById('root');
+const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x !== undefined) n.textContent = x; return n; };
+const sv = (t, a) => { const n = document.createElementNS(NS, t); for (const k in a) n.setAttribute(k, a[k]); return n; };
+const num = (v) => Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1), tick = (v) => Number.isInteger(v) ? String(v) : v.toFixed(1);
+const long = spec.end - spec.start > 36 * 3600e3;
+const tf = (ms, full) => new Date(ms).toLocaleString([], (full || long) ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' } : { hour: 'numeric', minute: '2-digit' });
+const at = (pts, t) => { let r = null; for (const p of pts) { if (p[0] > t) break; r = p[1]; } return r; };
+function ticks(lo, hi) {
+  const span = hi - lo || 1, raw = span / 4, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 5, 10].map((m) => m * mag).find((s) => s >= raw) || mag * 10, out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+function stepPath(pts, x, y) { let d = ''; pts.forEach((p, i) => { d += (i ? 'H' + x(p[0]) + 'V' + y(p[1]) : 'M' + x(p[0]) + ',' + y(p[1])); }); return d; }
+function panel(p) {
+  const wrap = el('div', 'panel'); wrap.tabIndex = 0;
+  wrap.append(el('div', 'unit', p.unit));
+  const W = Math.max(280, root.clientWidth - 28), H = 190, L = 44, R = 10, T = 8, B = 22;
+  const vals = p.series.flatMap((s) => s.points.map((q) => q[1])).concat(p.band ? p.band.low.concat(p.band.high).map((q) => q[1]) : []);
+  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo || 1) * 0.06; lo -= pad; hi += pad;
+  const x = (t) => L + (t - spec.start) / (spec.end - spec.start || 1) * (W - L - R), y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
+  const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': p.unit + ' chart' }); svg.style.height = H + 'px';
+  for (const v of ticks(lo, hi)) {
+    svg.append(sv('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: 'var(--grid)', 'stroke-width': 1 }));
+    const t = sv('text', { x: L - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'axis' }); t.textContent = tick(v); svg.append(t);
+  }
+  for (let i = 0; i <= 4; i++) {
+    const t = spec.start + (spec.end - spec.start) * i / 4, a = sv('text', { x: Math.min(W - R, Math.max(L, x(t))), y: H - 4, class: 'axis', 'text-anchor': i === 0 ? 'start' : i === 4 ? 'end' : 'middle' });
+    a.textContent = tf(t); svg.append(a);
+  }
+  if (p.band) {
+    const hiP = p.band.high, loP = p.band.low, end = spec.end;
+    const top = hiP.map((q) => [q[0], q[1]]), bot = loP.map((q) => [q[0], q[1]]);
+    let d = 'M' + x(top[0][0]) + ',' + y(top[0][1]);
+    top.forEach((q, i) => { if (i) d += 'H' + x(q[0]) + 'V' + y(q[1]); }); d += 'H' + x(end);
+    d += 'V' + y(bot[bot.length - 1][1]); for (let i = bot.length - 1; i > 0; i--) d += 'H' + x(bot[i][0]) + 'V' + y(bot[i - 1][1]);
+    d += 'H' + x(bot[0][0]) + 'Z';
+    svg.append(sv('path', { d, fill: 'var(--band)' }));
+  }
+  for (const s of p.series) {
+    svg.append(sv('path', { d: s.points.map((q, i) => (i ? 'L' : 'M') + x(q[0]).toFixed(1) + ',' + y(q[1]).toFixed(1)).join(''), fill: 'none',
+      stroke: 'var(--s' + s.slot + ')', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    const last = s.points[s.points.length - 1];
+    svg.append(sv('circle', { cx: x(last[0]), cy: y(last[1]), r: 4, fill: 'var(--s' + s.slot + ')', stroke: 'var(--bg)', 'stroke-width': 2 }));
+  }
+  const cross = sv('line', { y1: T, y2: H - B, stroke: 'var(--muted)', 'stroke-width': 1, visibility: 'hidden' }); svg.append(cross);
+  wrap.append(svg);
+  const tip = el('div', 'tip'); tip.hidden = true; wrap.append(tip);
+  const show = (t) => {
+    t = Math.min(spec.end, Math.max(spec.start, t)); cross.setAttribute('x1', x(t)); cross.setAttribute('x2', x(t)); cross.setAttribute('visibility', 'visible');
+    tip.replaceChildren(el('div', 't', tf(t, true)));
+    for (const s of p.series) {
+      const v = at(s.points, t); if (v === null) continue;
+      const r = el('div', 'r'), k = el('i'); k.style.borderTopColor = 'var(--s' + s.slot + ')';
+      r.append(k, el('span', '', s.label), el('b', '', num(v) + ' ' + p.unit)); tip.append(r);
+    }
+    if (p.band) { const a = at(p.band.low, t), b = at(p.band.high, t); if (a !== null && b !== null) { const r = el('div', 'r'); r.append(el('span', '', p.band.label), el('b', '', num(a) + '-' + num(b))); tip.append(r); } }
+    tip.hidden = false; const px = x(t) / W * wrap.clientWidth; tip.style.top = '18px';
+    tip.style.left = Math.max(0, Math.min(wrap.clientWidth - tip.offsetWidth - 4, px + 10)) + 'px';
+  };
+  const hide = () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); };
+  svg.onpointermove = (e) => { const r = svg.getBoundingClientRect(); show(spec.start + ((e.clientX - r.left) / r.width * W - L) / (W - L - R) * (spec.end - spec.start)); };
+  svg.onpointerleave = hide; wrap.onblur = hide;
+  let cur = spec.end; wrap.onkeydown = (e) => { const d = (spec.end - spec.start) / 60; if (e.key === 'ArrowLeft') { cur -= d; show(cur); e.preventDefault(); } if (e.key === 'ArrowRight') { cur += d; show(cur); e.preventDefault(); } };
+  return wrap;
+}
+function render() {
+  width = root.clientWidth;
+  root.replaceChildren(el('h1', '', spec.title), el('div', 'sub', tf(spec.start, true) + ' to ' + tf(spec.end, true)));
+  const all = spec.panels.flatMap((p) => p.series);
+  if (all.length > 1) {
+    const lg = el('div', 'legend');
+    for (const s of all) { const b = el('span'), i = el('i'); i.style.background = 'var(--s' + s.slot + ')'; b.append(i, document.createTextNode(s.label)); lg.append(b); }
+    root.append(lg);
+  }
+  for (const p of spec.panels) root.append(panel(p));
+  const d = el('details'), tb = el('table'); d.append(el('summary', '', 'Numbers')); d.append(tb);
+  const head = el('tr'); ['', 'Latest', 'Low', 'High', 'Average'].forEach((h) => head.append(el('th', '', h))); tb.append(head);
+  for (const p of spec.panels) {
+    for (const s of p.series) { const r = el('tr'); r.append(el('td', '', s.label + ' (' + p.unit + ')')); for (const k of ['latest', 'min', 'max', 'mean']) r.append(el('td', '', num(s.stats[k]))); tb.append(r); }
+    if (p.band && p.band.stats) { const r = el('tr'); r.append(el('td', '', p.band.label + ': below / inside / above (% of time)')); const b = p.band.stats; r.append(el('td', '', b.below + ' / ' + b.inside + ' / ' + b.above)); tb.append(r); }
+  }
+  root.append(d); post();
+}
+function post() { try { parent.postMessage({ type: 'iframe:height', height: document.documentElement.scrollHeight + 4 }, '*'); } catch (e) { /* standalone */ } }
+let timer, width = 0; const again = () => { clearTimeout(timer); timer = setTimeout(() => { if (root.clientWidth !== width) render(); }, 120); };
+render(); window.addEventListener('resize', again); if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+})();
+</script></body></html>"""
+
+
+def chart_html(spec):
+    """The page for one chart. The spec is data inside a JSON script tag, never markup (`<` is escaped)."""
+    return _CHART_HTML.replace("__SPEC__", json.dumps(spec, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c"))
 
 
 class Tools:
@@ -291,6 +520,60 @@ class Tools:
                  what was not checked. Report only what it found; "nothing to report" is a normal answer.
         """
         return self._run(lambda gw: gw.watch())
+
+    def show_chart(self, roles: str, hours: float = 24, title: str = "") -> str:
+        """
+        Draw a chart of recent readings for the grower, shown inline in the chat. Use it when a picture would help
+        the grower see what happened. You do not need to describe the picture: it is displayed, and the numbers you
+        may quote (latest, low, high, average, share of time inside the target band) are returned here.
+        :param roles: Role names from get_roles, comma separated, at most 5 (for example "greenhouse_temperature,outside_temperature"). Readings with different units are drawn in separate panels. The target band is added for greenhouse_temperature.
+        :param hours: How far back to look, 1 to 168.
+        :param title: A short title, for example "Last 24 hours: greenhouse and outside temperature".
+        :return: The chart, plus the numbers behind it.
+        """
+        import time as _time
+
+        wanted = [r.strip().lower() for r in (roles or "").split(",") if r.strip()]
+        if not wanted or len(wanted) > MAX_CHART_SERIES:
+            return f"Give 1 to {MAX_CHART_SERIES} role names, comma separated."
+        hours = min(168.0, max(1.0, float(hours or 24)))
+        try:
+            gw = self._gw()
+            known = gw.roles()
+            missing = [r for r in wanted if r not in known]
+            if missing:
+                return f"Unknown role(s): {', '.join(missing)}. Available roles: {', '.join(sorted(known)) or 'none approved yet'}."
+            end_ts = (_epoch(self.valves.AS_OF) if self.valves.AS_OF else None) or _time.time()
+            start_ts = end_ts - hours * 3600
+
+            def pull(entity_id):
+                rows = gw.history(entity_id, _iso(start_ts), _iso(end_ts))
+                return history_points(rows, end_ts)
+
+            states = {x["entity_id"]: x for x in gw.states(entity_id=",".join(known[r][0]["entity_id"] for r in wanted))}
+            series, empty = [], []
+            for role in wanted:
+                eid = known[role][0]["entity_id"]
+                unit = (states.get(eid, {}).get("attributes") or {}).get("unit_of_measurement") or next(
+                    (u for k, u in _DEFAULT_UNITS if role.endswith(k) or role == k), "")
+                points = pull(eid)
+                (series if points else empty).append({"role": role, "entity_id": eid, "unit": unit, "points": points})
+            if not series:
+                return "No numeric readings in that window for: " + ", ".join(wanted)
+            bands = {}
+            if any(s["role"] == "greenhouse_temperature" for s in series) and "target_temp_low" in known and "target_temp_high" in known:
+                low, high = pull(known["target_temp_low"][0]["entity_id"]), pull(known["target_temp_high"][0]["entity_id"])
+                unit = next(s["unit"] for s in series if s["role"] == "greenhouse_temperature")
+                if low and high:
+                    bands[unit] = {"low": low, "high": high}
+        except GatewayError as exc:
+            return f"Gateway error: {exc}"
+        spec = build_chart_spec(title.strip()[:120] or f"Last {hours:g} hours", start_ts, end_ts, series, bands)
+        facts = {"hours": hours, "series": {s["label"]: {**s["stats"], "unit": p["unit"]} for p in spec["panels"] for s in p["series"]},
+                 "target_band_time_pct": {p["unit"]: p["band"]["stats"] for p in spec["panels"] if p["band"]},
+                 "no_data_for": [e["role"] for e in empty],
+                 "note": "The chart is already shown to the user. Do not describe it point by point; give the numbers that matter."}
+        return HTMLResponse(content=chart_html(spec), headers={"Content-Disposition": "inline"}), facts
 
     def get_roles(self, include_drafts: bool = False) -> str:
         """
