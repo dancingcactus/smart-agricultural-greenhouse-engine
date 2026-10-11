@@ -20,7 +20,7 @@ button:disabled { opacity:.5; cursor:not-allowed; } .banner { padding:10px 12px;
 .entry h2 { font-size:1rem; margin:0; } code { font-family:ui-monospace, Menlo, monospace; font-size:.85rem; color:var(--muted); }
 .meta { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 8px; } .chip { background:var(--chip); border-radius:99px;
         padding:1px 9px; font-size:.78rem; color:var(--muted); } .chip.approved { color:var(--accent); }
-.chip.rejected { color:var(--bad); } textarea { width:100%; min-height:62px; resize:vertical; } .row { display:flex;
+.chip.rejected { color:var(--bad); } .chip.role { color:var(--accent); border:1px solid var(--accent); background:transparent; } textarea { width:100%; min-height:62px; resize:vertical; } .row { display:flex;
         gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center; } .row input { flex:1; min-width:160px; }
 .small { color:var(--muted); font-size:.8rem; } .msg { margin-left:auto; }
 details { margin:6px 0; font-size:.88rem; } summary { cursor:pointer; color:var(--muted); }
@@ -89,6 +89,7 @@ function render(entries) {
     if (e.device_class) meta.append(chip(e.device_class));
     if (e.device_name) meta.append(chip("device: " + e.device_name + (e.device_model ? " (" + e.device_model + ")" : "")));
     else if (e.platform) meta.append(chip(e.platform));
+    for (const a of e.aliases) if (a.startsWith("role:")) meta.append(chip("role: " + a.slice(5), "role"));
     if (e.cryptic >= 0.5) meta.append(chip("name may be cryptic"));
     if (e.approved_by) meta.append(chip("approved by " + e.approved_by));
     const text = document.createElement("textarea"); text.value = e.meaning || ""; text.disabled = !owner;

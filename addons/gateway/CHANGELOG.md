@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Gateway add-on. Versions follow `version` in `config.yaml`.
 
+## 0.11.2
+
+- Each entity in the SAGE panel now shows its roles as green outlined chips (for example "role: greenhouse_temperature"). Typing `role:` in the filter box lists every entity that has one.
+
 ## 0.11.1
 
 - The **Import roles** box in the SAGE panel and `POST /glossary/roles` (see 0.11.0). They were added after 0.11.0 was first published, so an add-on already on 0.11.0 does not have them.
