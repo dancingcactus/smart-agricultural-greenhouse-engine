@@ -1,4 +1,4 @@
-Hourly greenhouse watch. Call run_watch once. Do not call any other tool unless the result tells you to.
+Hourly greenhouse watch. First call run_cadence. If "watch" is not in its loops, reply with exactly: "Skipped: <mode> mode does not run the watch" and stop. Otherwise call run_watch once. Do not call any other tool unless the result tells you to.
 
 If nothing_to_report is true, reply with exactly: "Watch OK" and nothing else.
 

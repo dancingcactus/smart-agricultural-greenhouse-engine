@@ -1,7 +1,7 @@
 """
 title: SAGE Gateway
 author: SAGE
-version: 0.4.0
+version: 0.5.0
 description: Read-only access to the greenhouse's data (entities, history, weather forecasts, configuration, glossary) through the SAGE Gateway. It cannot change anything in Home Assistant.
 """
 
@@ -122,6 +122,15 @@ class Gateway:
     def watch(self, stale_minutes=30, flat_hours=3, band_minutes=20):
         """Run the hourly code-only checks now: green/amber/red, findings with evidence, and what was skipped."""
         return self.get("/watch", stale_minutes=stale_minutes, flat_hours=flat_hours, band_minutes=band_minutes)
+
+    def cadence(self):
+        """The current mode and which loops (watch, daily, evening, weekly) it allows."""
+        return self.get("/review/cadence")
+
+    def daily_review(self, hours=24):
+        """The last `hours` in numbers (time in band, night humidity, equipment runtime), the watch findings and
+        the 72-hour forecast risks, as green/amber/red."""
+        return self.get("/review/daily", hours=hours)
 
     def roles(self, include_drafts=False):
         """Role name -> entities (aliases written as role:<name> in the glossary). Approved only by default."""
@@ -866,6 +875,23 @@ class Tools:
                  what was not checked. Report only what it found; "nothing to report" is a normal answer.
         """
         return self._run(lambda gw: gw.watch())
+
+    def run_cadence(self) -> str:
+        """
+        Read the greenhouse mode and which review loops it allows right now. Call this first in every scheduled run.
+        :return: the mode and the list of loops allowed (watch, daily, evening, weekly). If the loop you are running
+                 is not in the list, stop and say it was skipped because of the mode.
+        """
+        return self._run(lambda gw: gw.cadence())
+
+    def run_daily_review(self, hours: float = 24) -> str:
+        """
+        The numbers for the daily review, computed by code: time in the temperature band, night humidity, equipment
+        runtime, the watch findings and frost, heat or wind in the next 72 hours. Report only what it returns.
+        :param hours: How far back to look, 1 to 72.
+        :return: status green/amber/red, findings with evidence, summaries, data gaps and what is not measured.
+        """
+        return self._run(lambda gw: gw.daily_review(hours=min(72.0, max(1.0, float(hours or 24)))))
 
     def show_chart(self, roles: str, hours: float = 24, title: str = "") -> str:
         """

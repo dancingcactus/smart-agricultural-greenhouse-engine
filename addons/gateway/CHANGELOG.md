@@ -2,6 +2,11 @@
 
 All notable changes to the SAGE Gateway add-on. Versions follow `version` in `config.yaml`.
 
+## 0.14.0
+
+- New `GET /review/cadence`: the current mode and which loops (watch, daily, evening, weekly) it allows, so every scheduled run can exit when its loop is not due. An unrecognised mode falls back to the growing cadence and says so.
+- New `GET /review/daily`: the numbers for the daily review, computed by code. Time in the temperature band (against today's setpoints), night humidity hours (in the Home Assistant time zone), runtime, starts and longest run for each `equipment_*` role, the watch findings, and frost, heat or wind in the next 72 hours from the weather archive. Returns green, amber or red with evidence, `wake_daily_early` when the watch fired, data gaps and what is not measured. Live-only, read-only, no model.
+
 ## 0.13.0
 
 - The SAGE panel has a **Cost** tab beside Glossary. It shows what the models have cost from the run ledger: today, the last 7, 30 or 90 days, the average per day and a 30-day projection; a stacked daily chart by model role (with a hover readout and a table view); totals per role with tokens; and the 25 most recent calls. Days follow your browser's local time. New `GET /runs/daily` feeds it.

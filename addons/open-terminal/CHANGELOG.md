@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Sandbox add-on. Versions follow `version` in `config.yaml`.
 
+## 0.1.4
+
+- The sandbox's gateway client gains `cadence()` and `daily_review()` for the daily review.
+
 ## 0.1.3
 
 - The sandbox's gateway client gains `watch()` for the new health checks.
