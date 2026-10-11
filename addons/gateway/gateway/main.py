@@ -12,7 +12,7 @@ from gateway.jobs import helper_snapshot, weather_archive
 from gateway.jobs import snapshot as snapshot_job
 from gateway.jobs.scheduler import start_scheduler
 from gateway.metric_catalog.runner import run_from_env
-from gateway.routes import calls, glossary, ha, metric_catalog, snapshot, vm, weather
+from gateway.routes import calls, glossary, ha, metric_catalog, runs, snapshot, vm, weather
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -47,6 +47,7 @@ app.include_router(glossary.router)
 app.include_router(snapshot.router)
 app.include_router(weather.router)
 app.include_router(calls.router)
+app.include_router(runs.router)
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)

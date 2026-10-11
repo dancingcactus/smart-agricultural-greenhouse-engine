@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Gateway add-on. Versions follow `version` in `config.yaml`.
 
+## 0.10.0
+
+- New run ledger: `POST /runs` records which role, model, prompt version and tool set produced each answer, with tokens and cost; `GET /runs` lists recent rows and `GET /runs/spend` totals calls and dollars per role over a window. The SAGE Run Log filter in Open WebUI uses it to stamp every answer and to enforce daily spend and call caps. The gateway only stores the rows; it is still read-only toward Home Assistant.
+
 ## 0.9.1
 
 - Renamed to **SAGE Gateway** (Smart Agricultural Greenhouse Engine); the sidebar item is now **SAGE**. The add-on slug, options and data are unchanged, so nothing needs reconfiguring.

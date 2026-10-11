@@ -3,6 +3,8 @@
 # change them here, then run
 # scripts/build_presets.py. Alternates from the doc are listed per role.
 tool_ids: [sage_gateway]
+# Filter that stamps each run in the gateway ledger and enforces daily caps (owui/functions/sage_run_log.py).
+filter_ids: [sage_run_log]
 roles:
   # alternates: deepseek V4.1 Flash, GPT-5.4 nano
   small:    {name: "SAGE Small",    model: "anthropic/claude-haiku-5.5", temperature: 0.2}

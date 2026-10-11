@@ -56,6 +56,10 @@ def weather_db() -> str:
     return os.environ.get("WEATHER_DB", "weather_archive.sqlite3")
 
 
+def runs_db() -> str:
+    return os.environ.get("RUNS_DB", "runs.sqlite3")
+
+
 def mirror_dir() -> Path:
     return Path(os.environ.get("MIRROR_DIR", "mirror"))
 

@@ -52,7 +52,15 @@ links to that address.
 2. **Tool.** Workspace → Tools → New tool, paste `owui/tools/greenhouse_gateway.py`, save. Open its
    settings (Valves) and set `GATEWAY_URL` (for example `http://a0d7b954-greenhouse-gateway:8099`)
    and `GATEWAY_KEY`.
-3. **Try it.** Start a chat with a model, switch on the SAGE Gateway tool and the terminal, and
+3. **Run log filter.** Workspace → Functions → New function, paste `owui/functions/sage_run_log.py`,
+   save and enable it. In its Valves set `gateway_url` and `gateway_key` (same as the tool). It
+   stamps each SAGE answer (role, model, prompt hash, tokens, cost) in the gateway and blocks a role
+   after its daily cap (defaults: small $0.50, analyst $1, builder $1, reviewer $1 and 10 calls).
+   Review spend at `/runs/spend`.
+4. **Presets.** Run `python3 scripts/build_presets.py`, then Workspace → Models → Import
+   `owui/presets/sage-presets.json`. Install the tool and the filter first; the presets refer to
+   them by id (`sage_gateway`, `sage_run_log`).
+5. **Try it.** Start a chat with a SAGE model, switch on the SAGE Gateway tool and the terminal, and
    ask: *"Find the sensors that measure humidity and tell me how they are recorded."*
 
 ## Checking the safety properties
@@ -71,4 +79,4 @@ python3 -c "from greenhouse_gateway import Gateway; print(Gateway().catalog_stat
   model in Admin Panel → Models; I could not find a setting that does this from the add-on options.
 - **Provider routing per request.** Requiring OpenRouter's no-data-collection routing on every call
   is done through the account setting above, not in code.
-- **Model roles, request routing, the review loops and tool building** are the next steps.
+- **Request routing, the review loops and tool building** are the next steps.

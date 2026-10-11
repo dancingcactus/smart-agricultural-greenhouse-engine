@@ -17,6 +17,9 @@
       "toolIds": [
         "sage_gateway"
       ],
+      "filterIds": [
+        "sage_run_log"
+      ],
       "capabilities": {
         "citations": false
       }
@@ -39,6 +42,9 @@
       "description": "SAGE mid role. prompt dc0c75d820",
       "toolIds": [
         "sage_gateway"
+      ],
+      "filterIds": [
+        "sage_run_log"
       ],
       "capabilities": {
         "citations": false
@@ -63,6 +69,9 @@
       "toolIds": [
         "sage_gateway"
       ],
+      "filterIds": [
+        "sage_run_log"
+      ],
       "capabilities": {
         "citations": false
       }
@@ -85,6 +94,9 @@
       "description": "SAGE reviewer role. prompt a5b10eac89",
       "toolIds": [
         "sage_gateway"
+      ],
+      "filterIds": [
+        "sage_run_log"
       ],
       "capabilities": {
         "citations": false

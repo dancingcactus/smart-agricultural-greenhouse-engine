@@ -43,6 +43,7 @@ def build() -> list[dict]:
             "meta": {
                 "description": f"SAGE {role} role. prompt {digest}",
                 "toolIds": cfg["tool_ids"],
+                "filterIds": cfg.get("filter_ids", []),
                 "capabilities": {"citations": False},
             },
         })
