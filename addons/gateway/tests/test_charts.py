@@ -168,7 +168,7 @@ def test_state_segments_are_clipped_to_the_window_and_joined():
 
 def test_run_stats_counts_starts_short_runs_and_ignores_cut_off_runs():
     # on at the very start (cut off), then 3-minute run, then 40-minute run, then on again at the end (cut off)
-    t = lambda minutes: int((T0 + minutes * 60) * 1000)  # noqa: E731
+    t = lambda minutes: int((T0 + minutes * 60) * 1000)
     segs = [[t(0), t(10), "on"], [t(10), t(30), "off"], [t(30), t(33), "on"], [t(33), t(60), "off"],
             [t(60), t(100), "on"], [t(100), t(150), "unavailable"], [t(150), t(180), "on"]]
     st = m.run_stats(segs, t(0), t(180))
