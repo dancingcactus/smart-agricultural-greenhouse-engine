@@ -114,6 +114,7 @@ class Filter:
         role = role_of(body.get("model"))
         messages = body.get("messages") or []
         if not role or not messages:
+            log.info("SAGE run log: outlet skipped (model=%r, messages=%d)", body.get("model"), len(messages))
             return body
         meta = __metadata__ or {}
         row = run_row(role, __model__ or {}, messages[-1], body.get("chat_id") or meta.get("chat_id"),
@@ -121,7 +122,11 @@ class Filter:
                       self.valves.tool_set_version)
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                await client.post(f"{self.valves.gateway_url.rstrip('/')}/runs", json=row, headers=self._headers())
+                r = await client.post(f"{self.valves.gateway_url.rstrip('/')}/runs", json=row, headers=self._headers())
+            if r.status_code >= 400:
+                log.warning("SAGE run log: gateway refused the row (%s): %s", r.status_code, r.text[:200])
+            else:
+                log.info("SAGE run log: recorded %s run", role)
         except httpx.HTTPError:
             log.warning("SAGE run log: could not reach the gateway", exc_info=True)  # never break a chat
         return body

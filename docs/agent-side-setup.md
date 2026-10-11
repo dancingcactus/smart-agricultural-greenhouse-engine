@@ -52,7 +52,7 @@ links to that address.
 2. **Tool.** Workspace → Tools → New tool, paste `owui/tools/greenhouse_gateway.py`, save. Open its
    settings (Valves) and set `GATEWAY_URL` (for example `http://a0d7b954-greenhouse-gateway:8099`)
    and `GATEWAY_KEY`.
-3. **Run log filter.** Workspace → Functions → New function, paste `owui/functions/sage_run_log.py`,
+3. **Run log filter.** Admin Panel → Functions → New function (+), paste `owui/functions/sage_run_log.py`,
    save and enable it. In its Valves set `gateway_url` and `gateway_key` (same as the tool). It
    stamps each SAGE answer (role, model, prompt hash, tokens, cost) in the gateway and blocks a role
    after its daily cap (defaults: small $0.50, analyst $1, builder $1, reviewer $1 and 10 calls).
