@@ -2,7 +2,7 @@
 title: SAGE Run Log
 author: SAGE
 description: Stamps every SAGE answer (role, model, prompt hash, tool set, tokens, cost) in the gateway's run ledger and blocks a role once its daily cap is reached.
-version: 0.1.0
+version: 0.1.1
 """
 
 import hashlib
@@ -91,6 +91,7 @@ class Filter:
     async def inlet(self, body: dict, __model__: dict | None = None) -> dict:
         role = role_of(body.get("model"))
         if not role:
+            log.info("SAGE run log: inlet ignored model %r (not a sage-* preset)", body.get("model"))
             return body
         try:
             cost_caps = json.loads(self.valves.daily_cost_caps_usd or "{}")
@@ -100,6 +101,7 @@ class Filter:
                 r.raise_for_status()
                 spend = r.json().get("roles", {})
         except (httpx.HTTPError, ValueError) as exc:
+            log.warning("SAGE run log: could not check the daily cap: %s", exc)
             if self.valves.fail_closed:
                 raise SageBlocked(f"SAGE run log: cannot check the daily cap ({exc})") from exc
             return body
