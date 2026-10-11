@@ -57,3 +57,22 @@ def spend(conn: sqlite3.Connection, since: float) -> dict[str, dict]:
         " COALESCE(SUM(completion_tokens), 0) AS completion_tokens, COALESCE(SUM(cost_usd), 0) AS cost_usd,"
         " SUM(cost_usd IS NULL) AS unpriced FROM runs WHERE ts >= ? GROUP BY role", (since,))
     return {r["role"]: dict(r) for r in rows}
+
+
+def daily(conn: sqlite3.Connection, days: int, offset_minutes: int = 0, now: float | None = None) -> dict:
+    """Calls, tokens and dollars per local day and role for the last `days` days (today included).
+
+    `offset_minutes` is the viewer's offset east of UTC, so days start at the viewer's midnight.
+    Every day in the range is listed, even a day with no rows.
+    """
+    now = time.time() if now is None else now
+    local_now = now + offset_minutes * 60
+    first_midnight = (local_now // 86400) * 86400 - (days - 1) * 86400
+    start = first_midnight - offset_minutes * 60
+    rows = conn.execute(
+        "SELECT strftime('%Y-%m-%d', ts + ? * 60, 'unixepoch') AS day, role, COUNT(*) AS calls,"
+        " COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens, COALESCE(SUM(completion_tokens), 0) AS completion_tokens,"
+        " COALESCE(SUM(cost_usd), 0) AS cost_usd, SUM(cost_usd IS NULL) AS unpriced"
+        " FROM runs WHERE ts >= ? GROUP BY day, role ORDER BY day, role", (offset_minutes, start))
+    labels = [time.strftime("%Y-%m-%d", time.gmtime(first_midnight + i * 86400)) for i in range(days)]
+    return {"days": labels, "rows": [dict(r) for r in rows]}

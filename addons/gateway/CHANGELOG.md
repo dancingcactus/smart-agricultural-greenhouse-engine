@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Gateway add-on. Versions follow `version` in `config.yaml`.
 
+## 0.13.0
+
+- The SAGE panel has a **Cost** tab beside Glossary. It shows what the models have cost from the run ledger: today, the last 7, 30 or 90 days, the average per day and a 30-day projection; a stacked daily chart by model role (with a hover readout and a table view); totals per role with tokens; and the 25 most recent calls. Days follow your browser's local time. New `GET /runs/daily` feeds it.
+
 ## 0.12.0
 
 - New `GET /watch`: plain-code health and range checks on the live greenhouse, using the approved roles. It reports stale, unavailable or flat readings, low batteries on the same device, the greenhouse temperature staying outside the live setpoints or past the alarm limits, and thermostat faults, as green, amber or red with evidence. Roles that are not approved yet are listed as missing and their checks are skipped. It is live-only, read-only and uses no model.
