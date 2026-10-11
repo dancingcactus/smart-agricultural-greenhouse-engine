@@ -81,3 +81,36 @@ def test_gateway_down_fails_open_unless_configured():
     f.valves.fail_closed = True
     with pytest.raises(mod.SageBlocked, match="cannot check"):
         asyncio.run(f.inlet({"model": "sage-mid"}))
+
+
+def test_block_is_shown_in_the_chat_before_raising(monkeypatch):
+    class Resp:
+        def raise_for_status(self): ...
+        def json(self): return {"roles": {"small": {"calls": 5, "cost_usd": 0}}}
+
+    class Client:
+        def __init__(self, *a, **k): ...
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): ...
+        async def get(self, *a, **k): return Resp()
+
+    monkeypatch.setattr(mod.httpx, "AsyncClient", Client)
+    f = mod.Filter()
+    f.valves.daily_call_caps = '{"small": 1}'
+    events = []
+
+    async def emitter(event):
+        events.append(event)
+
+    with pytest.raises(mod.SageBlocked):
+        asyncio.run(f.inlet({"model": "sage-small"}, __event_emitter__=emitter))
+    assert [e["type"] for e in events] == ["chat:message:error", "notification"]
+    assert "daily cap reached" in events[0]["data"]["error"]["content"]
+
+
+def test_a_broken_emitter_does_not_hide_the_block(monkeypatch):
+    async def broken(event):
+        raise RuntimeError("socket gone")
+
+    asyncio.run(mod.tell_chat(broken, "x"))  # must not raise
+    asyncio.run(mod.tell_chat(None, "x"))
