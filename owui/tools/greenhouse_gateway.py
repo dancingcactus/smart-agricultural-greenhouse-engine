@@ -1,7 +1,7 @@
 """
 title: SAGE Gateway
 author: SAGE
-version: 0.3.0
+version: 0.4.0
 description: Read-only access to the greenhouse's data (entities, history, weather forecasts, configuration, glossary) through the SAGE Gateway. It cannot change anything in Home Assistant.
 """
 
@@ -290,27 +290,36 @@ def build_chart_spec(title, start_ts, end_ts, series, bands):
     return {"title": title, "start": int(start_ts * 1000), "end": int(end_ts * 1000), "panels": list(panels.values())}
 
 
-_CHART_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-:root{color-scheme:light dark;--bg:#fcfcfb;--fg:#0b0b0b;--muted:#52514e;--grid:#e3e2de;--band:rgba(80,120,160,.14);
+_EMBED_CSS = """:root{color-scheme:light dark;--bg:#fcfcfb;--fg:#0b0b0b;--muted:#52514e;--grid:#e3e2de;--band:rgba(80,120,160,.14);
 --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948}
 @media (prefers-color-scheme:dark){:root{--bg:#1a1a19;--fg:#f0efec;--muted:#c3c2b7;--grid:#34342f;--band:rgba(120,160,200,.16);
 --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767}}
 *{box-sizing:border-box}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--fg)}
 #root{background:var(--bg);border:1px solid var(--grid);border-radius:12px;padding:12px 14px}
-h1{font-size:1rem;margin:0 0 2px}.sub{color:var(--muted);font-size:.8rem}.legend{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0;font-size:.85rem}
+h1{font-size:1rem;margin:0 0 2px}.sub{color:var(--muted);font-size:.8rem}
+details{margin-top:8px;font-size:.82rem;color:var(--muted)}table{border-collapse:collapse;margin-top:4px;width:100%}
+td,th{text-align:right;padding:2px 8px;border-bottom:1px solid var(--grid);white-space:nowrap}td:first-child,th:first-child{text-align:left}
+"""
+
+_EMBED_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+__CSS__
+</style></head><body><div id="root"></div>
+<script id="spec" type="application/json">__SPEC__</script>
+<script>
+__JS__
+</script></body></html>"""
+
+_CHART_CSS = """*{box-sizing:border-box}.legend{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0;font-size:.85rem}
 .legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
 .panel{position:relative;margin-top:8px;outline-offset:2px}.panel .unit{color:var(--muted);font-size:.75rem}
 svg{display:block;width:100%;overflow:visible}.axis{fill:var(--muted);font-size:11px}
 .tip{position:absolute;z-index:5;pointer-events:none;background:var(--bg);border:1px solid var(--grid);border-radius:6px;padding:6px 9px;
 font-size:.8rem;box-shadow:0 2px 8px rgba(0,0,0,.2);min-width:150px}.tip .t{color:var(--muted);font-size:.72rem;margin-bottom:2px}
 .tip .r{display:flex;align-items:center;gap:6px}.tip .r i{width:14px;border-top:3px solid;display:inline-block}.tip .r b{margin-left:auto;padding-left:10px}
-details{margin-top:8px;font-size:.82rem;color:var(--muted)}table{border-collapse:collapse;margin-top:4px;width:100%}
-td,th{text-align:right;padding:2px 8px;border-bottom:1px solid var(--grid);white-space:nowrap}td:first-child,th:first-child{text-align:left}
-</style></head><body><div id="root"></div>
-<script id="spec" type="application/json">__SPEC__</script>
-<script>
-(() => {
+"""
+
+_CHART_JS = r"""(() => {
 const spec = JSON.parse(document.getElementById('spec').textContent);
 const NS = 'http://www.w3.org/2000/svg', root = document.getElementById('root');
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x !== undefined) n.textContent = x; return n; };
@@ -399,13 +408,350 @@ function render() {
 function post() { try { parent.postMessage({ type: 'iframe:height', height: document.documentElement.scrollHeight + 4 }, '*'); } catch (e) { /* standalone */ } }
 let timer, width = 0; const again = () => { clearTimeout(timer); timer = setTimeout(() => { if (root.clientWidth !== width) render(); }, 120); };
 render(); window.addEventListener('resize', again); if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
-})();
-</script></body></html>"""
+})();"""
+
+
+def _embed(css, js, spec):
+    data = json.dumps(spec, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+    return _EMBED_PAGE.replace("__CSS__", _EMBED_CSS + css).replace("__JS__", js).replace("__SPEC__", data)
 
 
 def chart_html(spec):
     """The page for one chart. The spec is data inside a JSON script tag, never markup (`<` is escaped)."""
-    return _CHART_HTML.replace("__SPEC__", json.dumps(spec, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c"))
+    return _embed(_CHART_CSS, _CHART_JS, spec)
+
+
+# ---- equipment timeline: what ran when, lined up with the temperature -------------------------------------------------
+ACTIVE_STATES = frozenset({"on", "open", "opening", "heat", "cool", "heating", "cooling", "running"})
+OFFLINE_STATES = frozenset({"unavailable", "unknown", ""})
+SHORT_RUN_MINUTES = 5.0
+MAX_LANES = 10
+
+
+def state_segments(rows, start_ms, end_ms):
+    """Home Assistant history for one entity -> [[start_ms, end_ms, state]] clipped to the window, gaps joined."""
+    points = []
+    for series in rows or []:
+        for item in series:
+            ts = _epoch(item.get("last_changed") or item.get("last_updated"))
+            if ts is not None:
+                points.append((int(ts * 1000), str(item.get("state", "")).lower()))
+        break  # one entity per request
+    points.sort()
+    segments = []
+    for i, (t, state) in enumerate(points):
+        a, b = max(t, start_ms), min(points[i + 1][0] if i + 1 < len(points) else end_ms, end_ms)
+        if b <= a:
+            continue
+        if segments and segments[-1][2] == state and segments[-1][1] == a:
+            segments[-1][1] = b
+        else:
+            segments.append([a, b, state])
+    return segments
+
+
+def run_stats(segments, start_ms, end_ms, short_minutes=SHORT_RUN_MINUTES):
+    """How long and how often something ran. A run cut off by either edge of the window is counted in the totals but
+    not in the average, shortest or short-run figures, because its real length is not known."""
+    runs, current = [], None
+    for a, b, state in segments:
+        if state in ACTIVE_STATES:
+            if current and current[1] == a:
+                current[1] = b
+            else:
+                current = [a, b]
+                runs.append(current)
+        else:
+            current = None
+    minutes = lambda ms: round(ms / 60000, 1)  # noqa: E731
+    whole = [(b - a) for a, b in runs if a > start_ms and b < end_ms]
+    active = sum(b - a for a, b in runs)
+    window = max(1, end_ms - start_ms)
+    last = segments[-1] if segments else None
+    return {
+        "active_minutes": minutes(active), "active_pct": round(100 * active / window, 1),
+        "starts": sum(1 for a, _ in runs if a > start_ms), "completed_runs": len(whole),
+        "average_run_minutes": minutes(sum(whole) / len(whole)) if whole else None,
+        "longest_run_minutes": minutes(max(b - a for a, b in runs)) if runs else None,
+        "shortest_run_minutes": minutes(min(whole)) if whole else None,
+        "short_runs": sum(1 for w in whole if w < short_minutes * 60000), "short_run_limit_minutes": short_minutes,
+        "offline_minutes": minutes(sum(b - a for a, b, s in segments if s in OFFLINE_STATES)),
+        "now": last[2] if last else None, "since": last[0] if last else None,
+    }
+
+
+def build_timeline_spec(title, start_ts, end_ts, lanes, temperature=None):
+    start_ms, end_ms = int(start_ts * 1000), int(end_ts * 1000)
+    spec = {"kind": "timeline", "title": title, "start": start_ms, "end": end_ms, "temperature": None, "lanes": []}
+    for lane in lanes:
+        spec["lanes"].append({"role": lane["role"], "label": role_label(lane["role"]), "entity_id": lane["entity_id"],
+                              "segments": lane["segments"], "stats": run_stats(lane["segments"], start_ms, end_ms)})
+    if temperature and temperature["points"]:
+        band = temperature.get("band")
+        spec["temperature"] = {"label": "Greenhouse temperature", "unit": temperature["unit"],
+                               "points": downsample(temperature["points"]), "stats": series_stats(temperature["points"]),
+                               "band": None if not band else {"low": band["low"], "high": band["high"], "stats": band_stats(
+                                   temperature["points"], band["low"], band["high"])}}
+    return spec
+
+
+def role_label(role):
+    return (role[len("equipment_"):] if role.startswith("equipment_") else role).replace("_", " ").capitalize()
+
+
+_TIMELINE_CSS = """.legend{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0;font-size:.82rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:14px;height:10px;border-radius:3px;display:inline-block}
+.wrap{position:relative;outline-offset:2px}svg{display:block;width:100%;overflow:visible}.axis{fill:var(--muted);font-size:11px}
+.cap{fill:var(--fg);font-size:12px}.cap2{fill:var(--muted);font-size:11px}
+.tip{position:absolute;z-index:5;pointer-events:none;background:var(--bg);border:1px solid var(--grid);border-radius:6px;padding:6px 9px;
+font-size:.8rem;box-shadow:0 2px 8px rgba(0,0,0,.2);min-width:170px}.tip .t{color:var(--muted);font-size:.72rem;margin-bottom:2px}
+.tip .r{display:flex;align-items:center;gap:6px}.tip .r i{width:12px;height:9px;border-radius:2px;display:inline-block}.tip .r b{margin-left:auto;padding-left:10px}"""
+
+_TIMELINE_JS = r"""(() => {
+const spec = JSON.parse(document.getElementById('spec').textContent);
+const NS = 'http://www.w3.org/2000/svg', root = document.getElementById('root');
+const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x !== undefined) n.textContent = x; return n; };
+const sv = (t, a, x) => { const n = document.createElementNS(NS, t); for (const k in a) n.setAttribute(k, a[k]); if (x !== undefined) n.textContent = x; return n; };
+const num = (v) => Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1), tick = (v) => Number.isInteger(v) ? String(v) : v.toFixed(1);
+const long = spec.end - spec.start > 36 * 3600e3;
+const tf = (ms, full) => new Date(ms).toLocaleString([], (full || long) ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' } : { hour: 'numeric', minute: '2-digit' });
+const dur = (m) => m == null ? 'n/a' : m >= 60 ? Math.floor(m / 60) + ' h ' + Math.round(m % 60) + ' min' : Math.round(m) + ' min';
+const at = (pts, t) => { let r = null; for (const p of pts) { if (p[0] > t) break; r = p[1]; } return r; };
+const stateAt = (segs, t) => { for (const s of segs) if (s[0] <= t && t < s[1]) return s[2]; return null; };
+const ACTIVE = ['on', 'open', 'opening', 'heat', 'cool', 'heating', 'cooling', 'running'], OFFLINE = ['unavailable', 'unknown', ''];
+const kind = (s) => ACTIVE.includes(s) ? 'on' : OFFLINE.includes(s) ? 'off-line' : 'off';
+function ticks(lo, hi) {
+  const raw = (hi - lo || 1) / 3, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 5, 10].map((m) => m * mag).find((s) => s >= raw) || mag * 10, out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+let width = 0;
+function render() {
+  width = root.clientWidth;
+  root.replaceChildren(el('h1', '', spec.title), el('div', 'sub', tf(spec.start, true) + ' to ' + tf(spec.end, true)));
+  const lg = el('div', 'legend');
+  for (const [txt, bg, extra] of [['running / open', 'var(--on)', ''], ['no data', 'var(--muted)', 'opacity:.45'], ['off', 'var(--grid)', '']]) {
+    const s = el('span'), i = el('i'); i.style.background = bg; if (extra) i.style.cssText += extra; s.append(i, document.createTextNode(txt)); lg.append(s);
+  }
+  root.append(lg);
+  const W = Math.max(300, root.clientWidth - 28), L = 44, R = 10, T = 8, B = 22, TEMP_H = spec.temperature ? 120 : 0, LANE = 48;
+  const H = T + (spec.temperature ? TEMP_H + 14 : 0) + spec.lanes.length * LANE + B;
+  const x = (t) => L + (t - spec.start) / (spec.end - spec.start || 1) * (W - L - R);
+  const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Equipment timeline' }); svg.style.height = H + 'px';
+  let y = T, ty = null;
+  if (spec.temperature) {
+    const tp = spec.temperature, vals = tp.points.map((q) => q[1]).concat(tp.band ? tp.band.low.concat(tp.band.high).map((q) => q[1]) : []);
+    let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo || 1) * 0.08; lo -= pad; hi += pad;
+    ty = (v) => y + (hi - v) / (hi - lo) * (TEMP_H - 4);
+    for (const v of ticks(lo, hi)) {
+      svg.append(sv('line', { x1: L, x2: W - R, y1: ty(v), y2: ty(v), stroke: 'var(--grid)', 'stroke-width': 1 }));
+      svg.append(sv('text', { x: L - 6, y: ty(v) + 4, 'text-anchor': 'end', class: 'axis' }, tick(v)));
+    }
+    svg.append(sv('text', { x: L, y: y - 1, class: 'cap2' }, tp.label + ' (' + tp.unit + ')'));
+    if (tp.band) {
+      const hiP = tp.band.high, loP = tp.band.low;
+      let d = 'M' + x(hiP[0][0]) + ',' + ty(hiP[0][1]); hiP.forEach((q, i) => { if (i) d += 'H' + x(q[0]) + 'V' + ty(q[1]); }); d += 'H' + x(spec.end);
+      d += 'V' + ty(loP[loP.length - 1][1]); for (let i = loP.length - 1; i > 0; i--) d += 'H' + x(loP[i][0]) + 'V' + ty(loP[i - 1][1]); d += 'H' + x(loP[0][0]) + 'Z';
+      svg.append(sv('path', { d, fill: 'var(--band)' }));
+    }
+    svg.append(sv('path', { d: tp.points.map((q, i) => (i ? 'L' : 'M') + x(q[0]).toFixed(1) + ',' + ty(q[1]).toFixed(1)).join(''), fill: 'none',
+      stroke: 'var(--s1)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    y += TEMP_H + 14;
+  }
+  const lanesTop = y;
+  for (const lane of spec.lanes) {
+    const st = lane.stats, bits = [];
+    bits.push(dur(st.active_minutes) + ' (' + st.active_pct + '%)'); bits.push(st.starts + (st.starts === 1 ? ' start' : ' starts'));
+    if (st.short_runs) bits.push(st.short_runs + ' under ' + st.short_run_limit_minutes + ' min');
+    svg.append(sv('text', { x: L, y: y + 11, class: 'cap' }, lane.label));
+    svg.append(sv('text', { x: L + 6 + lane.label.length * 6.6, y: y + 11, class: 'cap2' }, bits.join('  |  ')));
+    svg.append(sv('rect', { x: L, y: y + 17, width: W - L - R, height: 14, rx: 3, fill: 'var(--grid)' }));
+    for (const [a, b, s] of lane.segments) {
+      const k = kind(s); if (k === 'off') continue;
+      const w = Math.max(2, x(b) - x(a));
+      svg.append(sv('rect', { x: x(a), y: y + 17, width: w, height: 14, rx: 3, fill: k === 'on' ? 'var(--on)' : 'var(--muted)', opacity: k === 'on' ? 1 : 0.45 }));
+    }
+    y += LANE;
+  }
+  for (let i = 0; i <= 4; i++) {
+    const t = spec.start + (spec.end - spec.start) * i / 4;
+    svg.append(sv('text', { x: Math.min(W - R, Math.max(L, x(t))), y: H - 4, class: 'axis', 'text-anchor': i === 0 ? 'start' : i === 4 ? 'end' : 'middle' }, tf(t)));
+  }
+  const cross = sv('line', { y1: T, y2: H - B, stroke: 'var(--muted)', 'stroke-width': 1, visibility: 'hidden' }); svg.append(cross);
+  const wrap = el('div', 'wrap'); wrap.tabIndex = 0; wrap.append(svg);
+  const tip = el('div', 'tip'); tip.hidden = true; wrap.append(tip);
+  const show = (t) => {
+    t = Math.min(spec.end, Math.max(spec.start, t)); cross.setAttribute('x1', x(t)); cross.setAttribute('x2', x(t)); cross.setAttribute('visibility', 'visible');
+    tip.replaceChildren(el('div', 't', tf(t, true)));
+    if (spec.temperature) { const v = at(spec.temperature.points, t); if (v !== null) { const r = el('div', 'r'); r.append(el('span', '', 'Temperature'), el('b', '', num(v) + ' ' + spec.temperature.unit)); tip.append(r); } }
+    for (const lane of spec.lanes) {
+      const s = stateAt(lane.segments, t); if (s === null) continue;
+      const r = el('div', 'r'), k = el('i'), kd = kind(s); k.style.background = kd === 'on' ? 'var(--on)' : kd === 'off-line' ? 'var(--muted)' : 'var(--grid)'; if (kd === 'off-line') k.style.opacity = .45;
+      r.append(k, el('span', '', lane.label), el('b', '', kd === 'off-line' ? 'no data' : s)); tip.append(r);
+    }
+    tip.hidden = false; const px = x(t) / W * wrap.clientWidth; tip.style.top = '4px';
+    tip.style.left = Math.max(0, Math.min(wrap.clientWidth - tip.offsetWidth - 4, px + 10)) + 'px';
+  };
+  const hide = () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); };
+  svg.onpointermove = (e) => { const r = svg.getBoundingClientRect(); show(spec.start + ((e.clientX - r.left) / r.width * W - L) / (W - L - R) * (spec.end - spec.start)); };
+  svg.onpointerleave = hide; wrap.onblur = hide;
+  let cur = spec.end; wrap.onkeydown = (e) => { const d = (spec.end - spec.start) / 60; if (e.key === 'ArrowLeft') { cur -= d; show(cur); e.preventDefault(); } if (e.key === 'ArrowRight') { cur += d; show(cur); e.preventDefault(); } };
+  root.append(wrap);
+  const d = el('details'), tb = el('table'); d.append(el('summary', '', 'Numbers')); d.append(tb);
+  const head = el('tr'); ['', 'Running', 'Share', 'Starts', 'Longest run', 'Short runs', 'Now'].forEach((h) => head.append(el('th', '', h))); tb.append(head);
+  for (const lane of spec.lanes) {
+    const st = lane.stats, r = el('tr'); r.append(el('td', '', lane.label));
+    [dur(st.active_minutes), st.active_pct + '%', st.starts, dur(st.longest_run_minutes), st.short_runs + ' (<' + st.short_run_limit_minutes + ' min)', st.now || 'n/a'].forEach((v) => r.append(el('td', '', String(v)))); tb.append(r);
+  }
+  root.append(d); post();
+}
+function post() { try { parent.postMessage({ type: 'iframe:height', height: document.documentElement.scrollHeight + 4 }, '*'); } catch (e) { /* standalone */ } }
+let timer; const again = () => { clearTimeout(timer); timer = setTimeout(() => { if (root.clientWidth !== width) render(); }, 120); };
+render(); window.addEventListener('resize', again); if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+})();"""
+
+
+def timeline_html(spec):
+    return _embed(_TIMELINE_CSS + ":root{--on:var(--s3)}", _TIMELINE_JS, spec)
+
+
+# ---- current values: stat tiles for the grower ------------------------------------------------------------------------
+DEFAULT_VALUE_ROLES = ("greenhouse_temperature", "greenhouse_humidity", "outside_temperature", "vpd", "mode_switch")
+MAX_TILES = 8
+STALE_MINUTES = 30.0
+
+
+def _fmt(value):
+    return f"{value:.0f}" if abs(value) >= 100 else f"{value:.1f}"
+
+
+def _g(value):
+    """A setpoint or limit as people write it: 65, not 65.0; 62.5 stays 62.5."""
+    return f"{value:g}"
+
+
+def _num_state(state):
+    try:
+        value = float((state or {}).get("state"))
+    except (TypeError, ValueError):
+        return None
+    return value if value == value else None
+
+
+def build_tile(role, state, points, now_ms, band=None, set_point=None, stale_minutes=STALE_MINUTES):
+    """One stat tile. `state` is the Home Assistant state dict; `points` the last 24 h as [[ms, number]];
+    `band` is (low, high) for the greenhouse temperature; `set_point` the humidity set point, shown for reference."""
+    attrs = state.get("attributes") or {}
+    unit = attrs.get("unit_of_measurement") or next((u for k, u in _DEFAULT_UNITS if role.endswith(k) or role == k), "")
+    updated = max(filter(None, (_epoch(state.get("last_reported")), _epoch(state.get("last_updated")))), default=None)
+    age = None if updated is None else max(0.0, round((now_ms / 1000 - updated) / 60, 1))
+    tile = {"role": role, "label": role_label(role), "unit": unit, "age_minutes": age, "stale": bool(age is not None and age > stale_minutes),
+            "status": None, "delta": None, "meter": None, "spark": None, "set_point": None}
+    raw = str(state.get("state", ""))
+    try:
+        value = float(raw)
+    except ValueError:
+        value = None
+    if value is None:  # a mode or an on/off state
+        offline = raw.lower() in OFFLINE_STATES
+        since = _epoch(state.get("last_changed"))
+        tile.update(kind="state", value="No data" if offline else raw[:1].upper() + raw[1:], unit="",
+                    since=None if since is None else int(since * 1000), number=None)
+        if offline:
+            tile["status"] = {"level": "warn", "icon": "!", "text": "Home Assistant reports it unavailable"}
+        return tile
+    tile.update(kind="number", value=_fmt(value), number=value)
+    if tile["stale"]:
+        tile["status"] = {"level": "warn", "icon": "!", "text": f"No update for {round(age)} min"}
+    elif band and None not in band:
+        low, high = band
+        tile["meter"] = {"low": low, "high": high, "value": value}
+        if value < low:
+            tile["status"] = {"level": "warn", "icon": "▼", "text": f"Below target by {_fmt(low - value)} {unit}".strip()}
+        elif value > high:
+            tile["status"] = {"level": "warn", "icon": "▲", "text": f"Above target by {_fmt(value - high)} {unit}".strip()}
+        else:
+            tile["status"] = {"level": "ok", "icon": "✓", "text": f"Inside target {_g(low)} to {_g(high)} {unit}".strip()}
+    if set_point is not None:
+        tile["set_point"] = f"Set point {_g(set_point)} {unit}".strip()
+    hour_ago = now_ms - 3600 * 1000
+    if points and points[0][0] <= hour_ago:
+        before = value_at(points, hour_ago)
+        if before is not None:
+            diff = value - before
+            tile["delta"] = {"value": round(diff, 2), "text": ("Steady" if abs(diff) < 0.05 else f"{'▲' if diff > 0 else '▼'} {_fmt(abs(diff))} {unit}".strip()) + " vs 1 h ago"}
+    if len(points) > 1:
+        tile["spark"] = {"points": downsample(points, 48), "recent_from": now_ms - 3 * 3600 * 1000}
+    return tile
+
+
+_VALUES_CSS = """:root{--good:#0ca30c;--warn:#fab219}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:10px}
+.tile{border:1px solid var(--grid);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.tile .label{color:var(--muted);font-size:.8rem}.tile .value{font-size:1.7rem;font-weight:600;line-height:1.15}
+.tile .unit{font-size:.9rem;font-weight:400;color:var(--muted);margin-left:3px}
+.status{display:flex;gap:6px;align-items:baseline;font-size:.8rem}.status b{font-weight:700;width:1em;text-align:center}
+.status.ok b{color:var(--good)}.status.warn b{color:var(--warn)}
+.meter{position:relative;height:8px;border-radius:4px;background:var(--grid);margin:4px 0 2px}
+.meter .zone{position:absolute;top:0;bottom:0;background:var(--band);border-radius:4px;outline:1px solid var(--muted);outline-offset:-1px}
+.meter .mark{position:absolute;top:-3px;width:4px;height:14px;border-radius:2px;background:var(--fg);transform:translateX(-2px)}
+.note{color:var(--muted);font-size:.74rem}svg.spark{display:block;width:100%;height:34px;overflow:visible}.sparkslot{height:34px;margin-top:2px;min-width:0}"""
+
+_VALUES_JS = r"""(() => {
+const spec = JSON.parse(document.getElementById('spec').textContent);
+const NS = 'http://www.w3.org/2000/svg', root = document.getElementById('root');
+const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x !== undefined) n.textContent = x; return n; };
+const sv = (t, a) => { const n = document.createElementNS(NS, t); for (const k in a) n.setAttribute(k, a[k]); return n; };
+const ago = (min) => min < 1 ? 'just now' : min < 90 ? Math.round(min) + ' min ago' : Math.round(min / 60) + ' h ago';
+const clock = (ms) => new Date(ms).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+let width = 0;
+function spark(tile) {
+  const s = tile.spark, W = Math.max(80, tile.box.clientWidth), H = 34, pts = s.points;
+  const t0 = pts[0][0], t1 = pts[pts.length - 1][0], vs = pts.map((p) => p[1]), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo || 1) * 0.1;
+  const x = (t) => (t - t0) / (t1 - t0 || 1) * (W - 6) + 3, y = (v) => 3 + (hi + pad - v) / (hi - lo + 2 * pad) * (H - 6);
+  const svg = sv('svg', { class: 'spark', viewBox: '0 0 ' + W + ' ' + H, 'aria-hidden': 'true' }); svg.style.height = H + 'px';
+  const path = (arr) => arr.map((p, i) => (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ',' + y(p[1]).toFixed(1)).join('');
+  svg.append(sv('path', { d: path(pts), fill: 'none', stroke: 'var(--muted)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.7 }));
+  const recent = pts.filter((p) => p[0] >= s.recent_from);
+  if (recent.length > 1) svg.append(sv('path', { d: path(recent), fill: 'none', stroke: 'var(--s1)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  const last = pts[pts.length - 1];
+  svg.append(sv('circle', { cx: x(last[0]), cy: y(last[1]), r: 4, fill: 'var(--s1)', stroke: 'var(--bg)', 'stroke-width': 2 }));
+  return svg;
+}
+function render() {
+  width = root.clientWidth;
+  root.replaceChildren(el('h1', '', spec.title), el('div', 'sub', 'As of ' + clock(spec.now)));
+  const grid = el('div', 'grid'); root.append(grid); const slots = [];
+  for (const t of spec.tiles) {
+    const box = el('div', 'tile'); box.setAttribute('role', 'group'); box.setAttribute('aria-label', t.label); grid.append(box);
+    const v = el('div', 'value', t.value); if (t.unit) v.append(el('span', 'unit', t.unit));
+    box.append(el('div', 'label', t.label), v);
+    if (t.kind === 'state' && t.since) box.append(el('div', 'note', 'Since ' + clock(t.since)));
+    if (t.status) { const s = el('div', 'status ' + t.status.level); s.append(el('b', '', t.status.icon), el('span', '', t.status.text)); box.append(s); }
+    if (t.set_point) box.append(el('div', 'note', t.set_point));
+    if (t.meter) {
+      const m = t.meter, span = (m.high - m.low) || 1, lo = m.low - span * 0.6, hi = m.high + span * 0.6, pc = (q) => Math.max(0, Math.min(100, (q - lo) / (hi - lo) * 100)) + '%';
+      const bar = el('div', 'meter'), zone = el('div', 'zone'), mark = el('div', 'mark');
+      zone.style.left = pc(m.low); zone.style.width = (parseFloat(pc(m.high)) - parseFloat(pc(m.low))) + '%'; mark.style.left = pc(m.value);
+      bar.append(zone, mark); bar.setAttribute('role', 'img'); bar.setAttribute('aria-label', 'Position within the target range'); box.append(bar);
+    }
+    if (t.spark) { const slot = el('div', 'sparkslot'); box.append(slot); slots.push([t, slot]); }
+    if (t.delta) box.append(el('div', 'note', t.delta.text));
+    if (t.age_minutes !== null && !t.stale) box.append(el('div', 'note', 'Updated ' + ago(t.age_minutes)));
+  }
+  // Sparklines are sized after the grid has settled, so their width is the tile's real width.
+  for (const [t, slot] of slots) { t.box = slot; slot.append(spark(t)); }
+  post();
+}
+function post() { try { parent.postMessage({ type: 'iframe:height', height: document.documentElement.scrollHeight + 4 }, '*'); } catch (e) { /* standalone */ } }
+let timer; const again = () => { clearTimeout(timer); timer = setTimeout(() => { if (root.clientWidth !== width) render(); }, 120); };
+render(); window.addEventListener('resize', again); if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+})();"""
+
+
+def values_html(spec):
+    return _embed(_VALUES_CSS, _VALUES_JS, spec)
 
 
 class Tools:
@@ -574,6 +920,118 @@ class Tools:
                  "no_data_for": [e["role"] for e in empty],
                  "note": "The chart is already shown to the user. Do not describe it point by point; give the numbers that matter."}
         return HTMLResponse(content=chart_html(spec), headers={"Content-Disposition": "inline"}), facts
+
+    def show_timeline(self, roles: str = "", hours: float = 24, with_temperature: bool = True, title: str = "") -> str:
+        """
+        Draw an equipment timeline for the grower, inline in the chat: when each piece of equipment ran, lined up with
+        the greenhouse temperature and its target band, so the grower can see what ran and what the temperature did.
+        It shows what changed state and when, not why or what was commanded. The picture is displayed; quote the
+        returned numbers (running time, starts, short runs) instead of describing it.
+        :param roles: Equipment role names from get_roles, comma separated (for example "equipment_evaporative_cooler,equipment_north_fan"). Leave empty for every approved equipment_* role.
+        :param hours: How far back to look, 1 to 168.
+        :param with_temperature: Draw the greenhouse temperature and target band above the timeline.
+        :param title: A short title.
+        :return: The timeline, plus the numbers behind it.
+        """
+        import time as _time
+
+        try:
+            gw = self._gw()
+            known = gw.roles()
+            wanted = [r.strip().lower() for r in (roles or "").split(",") if r.strip()] or sorted(r for r in known if r.startswith("equipment_"))
+            if not wanted:
+                return "No equipment roles are approved yet. Ask the owners to add roles such as equipment_north_fan in the SAGE panel."
+            missing = [r for r in wanted if r not in known]
+            if missing:
+                return f"Unknown role(s): {', '.join(missing)}. Available roles: {', '.join(sorted(known)) or 'none approved yet'}."
+            wanted = wanted[:MAX_LANES]
+            hours = min(168.0, max(1.0, float(hours or 24)))
+            end_ts = (_epoch(self.valves.AS_OF) if self.valves.AS_OF else None) or _time.time()
+            start_ts = end_ts - hours * 3600
+            start_ms, end_ms = int(start_ts * 1000), int(end_ts * 1000)
+            lanes, empty = [], []
+            for role in wanted:
+                eid = known[role][0]["entity_id"]
+                segments = state_segments(gw.history(eid, _iso(start_ts), _iso(end_ts)), start_ms, end_ms)
+                (lanes if segments else empty).append({"role": role, "entity_id": eid, "segments": segments})
+            if not lanes:
+                return "No history in that window for: " + ", ".join(wanted)
+            temperature = None
+            if with_temperature and "greenhouse_temperature" in known:
+                eid = known["greenhouse_temperature"][0]["entity_id"]
+                points = history_points(gw.history(eid, _iso(start_ts), _iso(end_ts)), end_ts)
+                unit = ((gw.states(entity_id=eid) or [{}])[0].get("attributes") or {}).get("unit_of_measurement") or "°F"
+                band = None
+                if "target_temp_low" in known and "target_temp_high" in known:
+                    low = history_points(gw.history(known["target_temp_low"][0]["entity_id"], _iso(start_ts), _iso(end_ts)), end_ts)
+                    high = history_points(gw.history(known["target_temp_high"][0]["entity_id"], _iso(start_ts), _iso(end_ts)), end_ts)
+                    band = {"low": low, "high": high} if low and high else None
+                temperature = {"points": points, "unit": unit, "band": band}
+        except GatewayError as exc:
+            return f"Gateway error: {exc}"
+        spec = build_timeline_spec(title.strip()[:120] or f"Equipment, last {hours:g} hours", start_ts, end_ts, lanes, temperature)
+        facts = {"hours": hours, "equipment": {lane["label"]: lane["stats"] for lane in spec["lanes"]},
+                 "no_history_for": [e["role"] for e in empty],
+                 "note": "The timeline is already shown to the user. It shows what changed state and when, not why or what was "
+                         "commanded: do not claim a cause. Quote running time, starts and short runs."}
+        if spec["temperature"]:
+            facts["greenhouse_temperature"] = {**spec["temperature"]["stats"], "unit": spec["temperature"]["unit"],
+                                               "target_band_time_pct": (spec["temperature"]["band"] or {}).get("stats")}
+        return HTMLResponse(content=timeline_html(spec), headers={"Content-Disposition": "inline"}), facts
+
+    def show_values(self, roles: str = "", title: str = "") -> str:
+        """
+        Show the grower the current values as number tiles, inline in the chat. Use this whenever you report current
+        readings: it shows each value with its unit, how long ago it updated, whether it is inside the target range,
+        the change over the last hour and a 24 hour sparkline. The tiles are displayed; quote the returned figures.
+        :param roles: Role names from get_roles, comma separated, at most 8. Leave empty for the usual set (greenhouse temperature and humidity, outside temperature, VPD, mode).
+        :param title: A short title, for example "Greenhouse right now".
+        :return: The tiles, plus the figures behind them.
+        """
+        import time as _time
+
+        try:
+            gw = self._gw()
+            known = gw.roles()
+            wanted = [r.strip().lower() for r in (roles or "").split(",") if r.strip()] or [r for r in DEFAULT_VALUE_ROLES if r in known]
+            if not wanted:
+                return "No roles are approved yet. Ask the owners to add roles in the SAGE panel."
+            missing = [r for r in wanted if r not in known]
+            if missing:
+                return f"Unknown role(s): {', '.join(missing)}. Available roles: {', '.join(sorted(known)) or 'none approved yet'}."
+            wanted = wanted[:MAX_TILES]
+            now = (_epoch(self.valves.AS_OF) if self.valves.AS_OF else None) or _time.time()
+            ids = {r: known[r][0]["entity_id"] for r in wanted}
+            extra = [known[r][0]["entity_id"] for r in ("target_temp_low", "target_temp_high", "target_humidity") if r in known]
+            states = {x["entity_id"]: x for x in gw.states(entity_id=",".join(dict.fromkeys([*ids.values(), *extra])))}
+            tiles, missing_state = [], []
+            number = lambda e: _num_state(states.get(e))  # noqa: E731
+            band = None
+            if "target_temp_low" in known and "target_temp_high" in known:
+                band = (number(known["target_temp_low"][0]["entity_id"]), number(known["target_temp_high"][0]["entity_id"]))
+            set_point = number(known["target_humidity"][0]["entity_id"]) if "target_humidity" in known else None
+            for role in wanted:
+                state = states.get(ids[role])
+                if state is None:
+                    missing_state.append(role)
+                    continue
+                points = []
+                if _num_state(state) is not None:
+                    points = history_points(gw.history(ids[role], _iso(now - 24 * 3600), _iso(now)), now)
+                tiles.append(build_tile(role, state, points, int(now * 1000),
+                                        band if role == "greenhouse_temperature" else None,
+                                        set_point if role == "greenhouse_humidity" else None))
+        except GatewayError as exc:
+            return f"Gateway error: {exc}"
+        if not tiles:
+            return "Home Assistant has no state for: " + ", ".join(wanted)
+        spec = {"kind": "values", "title": title.strip()[:120] or "Right now", "now": int(now * 1000), "tiles": tiles}
+        facts = {"values": {t["label"]: {k: t[k] for k in ("value", "unit", "age_minutes", "stale") if t.get(k) is not None} | {
+                    "status": (t["status"] or {}).get("text"), "change_1h": (t["delta"] or {}).get("value"),
+                    "set_point": t.get("set_point")} for t in tiles},
+                 "no_state_for": missing_state,
+                 "note": "The tiles are already shown to the user. Do not repeat every value; point out what matters."}
+        return HTMLResponse(content=values_html(spec), headers={"Content-Disposition": "inline"}), facts
 
     def get_roles(self, include_drafts: bool = False) -> str:
         """

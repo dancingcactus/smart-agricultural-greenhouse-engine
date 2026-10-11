@@ -16,4 +16,19 @@ the picture.
   chart data is passed as JSON and drawn as text, never as markup. Long-term dashboards stay in Grafana.
 - During a replay (the tool's AS_OF setting) the window ends at that time and the gateway clips the data.
 
-Not built yet: forecast bands, equipment timelines, heatmaps.
+## Equipment timeline (`show_timeline`)
+
+One lane per `equipment_*` role (or the roles you name), showing when it ran, under the greenhouse temperature and
+its target band on the same time axis. Each lane says how long it ran, how many starts and how many runs were under
+5 minutes (short cycling); runs cut off by either end of the window are counted in the totals but not in the
+average or short-run figures. It shows what changed state and when, not why or what was commanded.
+
+## Number tiles (`show_values`)
+
+For reporting current values: one tile per role with the value and unit, how long ago it updated, whether the
+greenhouse temperature is inside the target band (icon plus words, never colour alone) with a position meter, the
+humidity set point for reference, the change over the last hour and a 24 hour sparkline. A reading with no update
+for 30 minutes, or reported unavailable, is flagged instead of presented as current.
+
+Not built yet: forecast bands, heatmaps, and commanded-versus-observed (that needs the automation that acted, from
+the logbook).
