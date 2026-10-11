@@ -1,6 +1,6 @@
 # OpenRouter model ids per role, following the "Model tiers" first picks in
-# docs/requirements.md (cheapest that holds up wins). The ids are best guesses:
-# CONFIRM each against your OpenRouter model list before importing, then run
+# docs/requirements.md (cheapest that holds up wins). The ids were checked against OpenRouter (GLM is 5.3, not the doc's 5.2):
+# change them here, then run
 # scripts/build_presets.py. Alternates from the doc are listed per role.
 tool_ids: [sage_gateway]
 roles:
@@ -9,6 +9,6 @@ roles:
   # alternates: MiniMax M3, GPT-5.6 Luna, Claude Sonnet 5.5
   mid:      {name: "SAGE Analyst",  model: "qwen/qwen3.8-27b",           temperature: 0.3}
   # alternates: DeepSeek V4.1 Flash, DeepSeek V4.1 Pro when released
-  builder:  {name: "SAGE Builder",  model: "z-ai/glm-5.2",               temperature: 0.2}
+  builder:  {name: "SAGE Builder",  model: "z-ai/glm-5.3",               temperature: 0.2}
   # alternates: GPT-5.6 Sol. Different vendor than the builder, by design.
   reviewer: {name: "SAGE Reviewer", model: "anthropic/claude-opus-5.5",  temperature: 0.2}
