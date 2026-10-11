@@ -1,0 +1,8 @@
+# OpenRouter model ids per role. CONFIRM these against your OpenRouter model
+# list before importing; change here, then rebuild the presets.
+tool_ids: [sage_gateway]
+roles:
+  small:    {name: "SAGE Small",    model: "anthropic/claude-haiku-5.5",  temperature: 0.2}
+  mid:      {name: "SAGE Analyst",  model: "anthropic/claude-sonnet-5.5", temperature: 0.3}
+  builder:  {name: "SAGE Builder",  model: "anthropic/claude-sonnet-5.5", temperature: 0.2}
+  reviewer: {name: "SAGE Reviewer", model: "anthropic/claude-opus-5.5",   temperature: 0.2}

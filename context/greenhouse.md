@@ -4,8 +4,8 @@ Human-authored. The agent reads this first. Items marked TODO are unknown; the
 agent must not guess them and should ask the grower instead.
 
 ## Site
-- Climate: USDA hardiness zone 6b (average annual minimum about -5 to 0 °F /
-  -20 to -18 °C). Cold nights and a real winter heating load; hot, humid summers.
+- Climate: USDA hardiness zone 6b (average annual minimum about -5 to 0 °F).
+  Cold nights and a real winter heating load; hot, humid summers.
 - Location (latitude / longitude): TODO (needed for sun angle and weather).
 - Structure: hoop greenhouse with an inflated (double-layer) plastic roof and
   plastic siding. The north-facing wall is insulated. Size: TODO.
