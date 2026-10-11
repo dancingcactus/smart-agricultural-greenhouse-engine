@@ -36,7 +36,7 @@ agent must not guess them and should ask the grower instead.
   and the air entering and leaving the ground-to-air heat transfer (GAHT, "earth battery") system.
 - Climate control: circulation fans, a north and a south exhaust fan, shutters, an evaporative cooler,
   a mister, a heater, and the GAHT fan. A thermostat entity and several hysteresis/offset helpers set when each runs.
-- Light and substrate data come only from two plant sensors (illuminance, soil moisture, conductivity).
+- The two plant sensors (light, soil moisture) no longer work, so there is no light or substrate data.
   There is a derived vapor pressure deficit (VPD) sensor.
 - Modes: the house runs in "Growing" or "Charging Earth Battery". There is no "Off" mode.
-- Not measured: basket weight, ground temperature, per-row conditions, pH/EC, fertilizer level.
+- Not measured: light, soil moisture, basket weight, ground temperature, per-row conditions, pH/EC, fertilizer level.

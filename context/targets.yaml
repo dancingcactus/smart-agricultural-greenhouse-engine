@@ -1,11 +1,10 @@
-# Temperatures are in °F (the unit the greenhouse records).
-# Targets are the grower's. null means not yet set: the agent must not invent
-# one and should ask. The reference block is general petunia guidance for
-# discussion only; it is NOT a target until the grower copies it above.
+# Temperatures are in °F. The grower's decision: the targets are the installation's own live setpoints
+# (the high/low temperature setpoint sensors and the humidity set point helper; ids are in the private
+# install notes), not numbers written here. The agent reads their current values and must not substitute others.
 season: {start: february, end: may}
-temperature_f: {day_min: null, day_max: null, night_min: null, night_max: null}
-relative_humidity_pct: {min: null, max: null}
-reference_petunia_unconfirmed:
+source: live_setpoints
+temperature_f: {day_min: null, day_max: null, night_min: null, night_max: null}   # unused: see source
+relative_humidity_pct: {min: null, max: null}                                      # unused: see source
+reference_petunia_unconfirmed:   # discussion aid only, never a target
   temperature_f: {day: "64-75", night: "54-61"}
   relative_humidity_pct: "50-70, avoid sustained >85 (botrytis risk)"
-notes: "Confirm or replace the reference values for your varieties and stage."
