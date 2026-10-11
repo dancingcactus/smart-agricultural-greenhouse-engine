@@ -60,7 +60,9 @@ links to that address.
 4. **Presets.** Run `python3 scripts/build_presets.py`. Your own entity ids live in a separate
    private repo (a clone of it next to this one, or `SAGE_PRIVATE_DIR`); the script writes presets that
    include them to `presets/sage-presets.json` there. Import that file under Workspace → Models →
-   Import (the public `owui/presets/sage-presets.json` is generic and has no entity ids). Install the tool and the filter first; the presets refer to
+   Import (the public `owui/presets/sage-presets.json` is generic and has no entity ids). The import also marks the
+   four underlying OpenRouter models hidden, so the model selector lists only the SAGE presets. To trim OpenRouter's
+   long list further, set the SAGE Agent add-on's **Allowed models** option to those four ids. Install the tool and the filter first; the presets refer to
    them by id (`sage_gateway`, `sage_run_log`).
 5. **Roles.** In the SAGE panel (Home Assistant sidebar) give entities role aliases such as
    `role:greenhouse_temperature` (see `docs/roles.md`). To enter a first set, open the panel's **Import roles**

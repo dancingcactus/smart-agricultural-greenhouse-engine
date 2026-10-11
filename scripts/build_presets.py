@@ -57,6 +57,12 @@ def build(private: bool = False) -> list[dict]:
                 "capabilities": {"citations": False},
             },
         })
+    if cfg.get("hide_base_models", True):
+        # An entry with a base model's own id (and no base_model_id) overrides that model; meta.hidden keeps it out of the
+        # model selector while the presets built on it still work. Listed last so the presets keep their positions.
+        for model in dict.fromkeys(r["model"] for r in cfg["roles"].values()):
+            out.append({"id": model, "name": model, "base_model_id": None, "is_active": True, "params": {},
+                        "meta": {"hidden": True, "description": "Hidden from the model selector: use the SAGE presets."}})
     return out
 
 

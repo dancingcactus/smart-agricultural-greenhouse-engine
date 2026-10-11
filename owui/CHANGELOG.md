@@ -21,3 +21,8 @@ show updates for them). The version is in each file's header.
 ## Presets (`presets/sage-presets.json`)
 
 Rebuilt by `scripts/build_presets.py`; each preset's description ends with the hash of its prompt.
+
+- The file now also holds one entry per base model (the four OpenRouter models) marked hidden, so after an import only
+  the SAGE presets show in the model selector. Presets still use those models underneath. To switch it off, set
+  `hide_base_models: false` in `owui/presets/models.yaml` and rebuild; to show a model again, use Admin Panel ->
+  Settings -> Models -> Show Model.

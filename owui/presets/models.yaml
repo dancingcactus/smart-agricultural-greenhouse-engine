@@ -2,6 +2,8 @@
 # docs/requirements.md (cheapest that holds up wins). The ids were checked against OpenRouter (GLM is 5.3, not the doc's 5.2):
 # change them here, then run
 # scripts/build_presets.py. Alternates from the doc are listed per role.
+# Also import an entry per base model that marks it hidden, so only the SAGE presets show in the model selector.
+hide_base_models: true
 tool_ids: [sage_gateway]
 # Filter that stamps each run in the gateway ledger and enforces daily caps (owui/functions/sage_run_log.py).
 filter_ids: [sage_run_log]

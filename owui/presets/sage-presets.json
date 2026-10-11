@@ -102,5 +102,49 @@
         "citations": false
       }
     }
+  },
+  {
+    "id": "anthropic/claude-haiku-5.5",
+    "name": "anthropic/claude-haiku-5.5",
+    "base_model_id": null,
+    "is_active": true,
+    "params": {},
+    "meta": {
+      "hidden": true,
+      "description": "Hidden from the model selector: use the SAGE presets."
+    }
+  },
+  {
+    "id": "qwen/qwen3.8-27b",
+    "name": "qwen/qwen3.8-27b",
+    "base_model_id": null,
+    "is_active": true,
+    "params": {},
+    "meta": {
+      "hidden": true,
+      "description": "Hidden from the model selector: use the SAGE presets."
+    }
+  },
+  {
+    "id": "z-ai/glm-5.3",
+    "name": "z-ai/glm-5.3",
+    "base_model_id": null,
+    "is_active": true,
+    "params": {},
+    "meta": {
+      "hidden": true,
+      "description": "Hidden from the model selector: use the SAGE presets."
+    }
+  },
+  {
+    "id": "anthropic/claude-opus-5.5",
+    "name": "anthropic/claude-opus-5.5",
+    "base_model_id": null,
+    "is_active": true,
+    "params": {},
+    "meta": {
+      "hidden": true,
+      "description": "Hidden from the model selector: use the SAGE presets."
+    }
   }
 ]

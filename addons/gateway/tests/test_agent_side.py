@@ -345,3 +345,16 @@ def test_seed_roles_plans_one_draft_per_entity_with_all_its_roles():
     seed = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(seed)
     assert seed.plan({"a": "sensor.x", "b": ["sensor.x", "switch.y"]}) == {"sensor.x": ["a", "b"], "switch.y": ["b"]}
+
+
+def test_presets_hide_their_base_models_from_the_selector():
+    spec = importlib.util.spec_from_file_location("build_presets", ROOT / "scripts" / "build_presets.py")
+    bp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bp)
+    out = bp.build()
+    presets = [m for m in out if m["base_model_id"]]
+    hidden = [m for m in out if not m["base_model_id"]]
+    assert [m["id"] for m in presets] == ["sage-small", "sage-mid", "sage-builder", "sage-reviewer"]  # positions unchanged
+    assert {m["id"] for m in hidden} == {m["base_model_id"] for m in presets}  # one override per base model, no duplicates
+    assert len(hidden) == len({m["id"] for m in hidden}) and all(m["meta"]["hidden"] and m["is_active"] for m in hidden)
+    assert not any(" " in m["id"] for m in out) and not any(m["id"] == m["base_model_id"] for m in out)
