@@ -1,7 +1,7 @@
 """
 title: SAGE Gateway
 author: SAGE
-version: 0.1.0
+version: 0.2.0
 description: Read-only access to the greenhouse's data (entities, history, weather forecasts, configuration, glossary) through the SAGE Gateway. It cannot change anything in Home Assistant.
 """
 
