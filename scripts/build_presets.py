@@ -16,13 +16,16 @@ ROOT = Path(__file__).resolve().parent.parent
 CTX = ROOT / "context"
 
 
-def build() -> list[dict]:
+def build(private: bool = False) -> list[dict]:
     cfg = yaml.safe_load((ROOT / "owui/presets/models.yaml").read_text())
     base = (CTX / "prompts/base.md").read_text().strip()
     context = "\n\n".join(
         f"## {name}\n{(CTX / name).read_text().strip()}"
         for name in ("greenhouse.md", "targets.yaml", "basket_map.yaml")
     )
+    if private:
+        # Installation-specific notes (entity ids). Gitignored: they never reach the public repo.
+        context += "\n\n## Installation entities\n" + (CTX / "private/entities.md").read_text().strip()
     out = []
     for role, r in cfg["roles"].items():
         role_prompt = (CTX / f"prompts/{role}.md").read_text().strip()
@@ -54,3 +57,8 @@ if __name__ == "__main__":
     path = ROOT / "owui/presets/sage-presets.json"
     path.write_text(json.dumps(build(), indent=2) + "\n")
     print(f"wrote {path}")
+    if (CTX / "private/entities.md").exists():
+        private_path = ROOT / "owui/presets/private/sage-presets.json"
+        private_path.parent.mkdir(exist_ok=True)
+        private_path.write_text(json.dumps(build(private=True), indent=2) + "\n")
+        print(f"wrote {private_path} (gitignored: import this one)")
