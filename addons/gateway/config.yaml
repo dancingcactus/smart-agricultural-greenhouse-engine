@@ -1,5 +1,5 @@
 name: SAGE Gateway
-version: "0.10.0"
+version: "0.11.0"
 slug: greenhouse_gateway
 description: Read-only gateway between Home Assistant and SAGE
 url: https://github.com/dancingcactus/smart-agricultural-greenhouse-engine

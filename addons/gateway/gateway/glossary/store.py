@@ -13,6 +13,10 @@ import time
 
 STATUSES = ("draft", "approved", "rejected")
 MAX_MEANING = 600
+# An alias of the form role:<name> names the job an entity does ("role:greenhouse_temperature"), so code such as
+# the watch can ask for "the main greenhouse temperature sensor" without hard-coding entity ids.
+ROLE_PREFIX = "role:"
+ROLE_RE = re.compile(r"^role:[a-z][a-z0-9_]{1,47}$")
 # Domains whose entities are worth explaining. Automations carry their own descriptions.
 DOMAINS = ("sensor", "binary_sensor", "input_number", "input_boolean", "input_select", "input_datetime",
            "switch", "light", "climate", "cover", "fan", "number", "select", "weather", "humidifier", "valve")
@@ -130,6 +134,11 @@ def _clean(meaning: str | None, aliases: list[str] | None) -> tuple[str | None, 
         aliases = [a.strip() for a in aliases if a.strip()][:20]
         if any(len(a) > 80 for a in aliases):
             raise GlossaryError("an alias is longer than 80 characters")
+        aliases = [a.lower() if a.lower().startswith(ROLE_PREFIX) else a for a in aliases]
+        bad = [a for a in aliases if a.startswith(ROLE_PREFIX) and not ROLE_RE.match(a)]
+        if bad:
+            raise GlossaryError(f"{bad[0]!r} is not a valid role: use lowercase letters, digits and underscores, "
+                                "like role:greenhouse_temperature")
     return meaning, aliases
 
 
@@ -235,3 +244,27 @@ def approved_as_of(glossary, as_of: float) -> list[dict]:
         "WHERE v.status='approved' ORDER BY v.entity_id", (as_of,)).fetchall()
     return [{"entity_id": r["entity_id"], "meaning": r["meaning"], "aliases": json.loads(r["aliases"] or "[]"),
              "approved_at": r["ts"], "approved_by": r["by"], "status": "approved"} for r in rows]
+
+
+def roles(glossary, as_of: float | None = None, include_drafts: bool = False) -> dict[str, list[dict]]:
+    """Role name -> the entities that carry it. Approved entries only, unless drafts are asked for.
+
+    With `as_of` it reads the glossary as the owners had approved it then (drafts are invisible).
+    """
+    if as_of is not None:
+        rows = approved_as_of(glossary, as_of)
+        status = {r["entity_id"]: "approved" for r in rows}
+        meaning = {r["entity_id"]: r["meaning"] for r in rows}
+        aliases = {r["entity_id"]: r["aliases"] for r in rows}
+    else:
+        entries = [e for e in list_entries(glossary) if e["status"] == "approved" or (include_drafts and e["status"] == "draft")]
+        status = {e["entity_id"]: e["status"] for e in entries}
+        meaning = {e["entity_id"]: e["meaning"] for e in entries}
+        aliases = {e["entity_id"]: e["aliases"] for e in entries}
+    out: dict[str, list[dict]] = {}
+    for eid in sorted(aliases):
+        for alias in aliases[eid]:
+            if ROLE_RE.match(alias):
+                out.setdefault(alias[len(ROLE_PREFIX):], []).append(
+                    {"entity_id": eid, "meaning": meaning[eid], "status": status[eid]})
+    return dict(sorted(out.items()))

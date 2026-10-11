@@ -124,6 +124,10 @@ class Gateway:
     def glossary(self, q=None, status=None):
         return self.get("/glossary", q=q, status=status)
 
+    def roles(self, include_drafts=False):
+        """Role name -> entities (aliases written as role:<name> in the glossary). Approved only by default."""
+        return self.get("/glossary/roles", include_drafts="true" if include_drafts else None)
+
     def propose_glossary(self, entity_id, meaning, aliases=None):
         """Suggest a meaning. It is only ever a draft: an owner decides whether to approve it."""
         return self._call("POST", "/glossary/drafts", body={"entity_id": entity_id, "meaning": meaning,

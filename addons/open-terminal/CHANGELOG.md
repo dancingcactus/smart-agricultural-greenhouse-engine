@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Sandbox add-on. Versions follow `version` in `config.yaml`.
 
+## 0.1.2
+
+- The gateway client in the sandbox gains `roles()` for the new role lookup.
+
 ## 0.1.1
 
 - Renamed to **SAGE Sandbox** (Smart Agricultural Greenhouse Engine). The add-on slug, options and data are unchanged.

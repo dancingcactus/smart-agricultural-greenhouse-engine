@@ -15,7 +15,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 CTX = ROOT / "context"
-# Installation-specific notes live in a separate private repo (entities.md inside it). Point SAGE_PRIVATE_DIR
+# Installation-specific roles live in a separate private repo (roles.yaml inside it). Point SAGE_PRIVATE_DIR
 # at a clone of it; the default is a sibling checkout named sage-greenhouse-private.
 PRIVATE = Path(os.environ.get("SAGE_PRIVATE_DIR", ROOT.parent / "sage-greenhouse-private"))
 
@@ -27,9 +27,12 @@ def build(private: bool = False) -> list[dict]:
         f"## {name}\n{(CTX / name).read_text().strip()}"
         for name in ("greenhouse.md", "targets.yaml", "basket_map.yaml")
     )
-    if private:
-        # Installation-specific notes (entity ids). Gitignored: they never reach the public repo.
-        context += "\n\n## Installation entities\n" + (PRIVATE / "entities.md").read_text().strip()
+    if private and (PRIVATE / "roles.yaml").exists():
+        # Short fallback only: the live list comes from the gateway's get_roles tool, so this stays small.
+        roles = yaml.safe_load((PRIVATE / "roles.yaml").read_text())
+        lines = "\n".join(f"- {r}: {', '.join([e] if isinstance(e, str) else e)}" for r, e in roles.items())
+        context += ("\n\n## Installation roles (fallback)\nCall get_roles first for the current list; use this only "
+                    f"if that call fails.\n{lines}")
     out = []
     for role, r in cfg["roles"].items():
         role_prompt = (CTX / f"prompts/{role}.md").read_text().strip()
@@ -61,7 +64,7 @@ if __name__ == "__main__":
     path = ROOT / "owui/presets/sage-presets.json"
     path.write_text(json.dumps(build(), indent=2) + "\n")
     print(f"wrote {path}")
-    if (PRIVATE / "entities.md").exists():
+    if (PRIVATE / "roles.yaml").exists():
         private_path = PRIVATE / "presets" / "sage-presets.json"
         private_path.parent.mkdir(exist_ok=True)
         private_path.write_text(json.dumps(build(private=True), indent=2) + "\n")

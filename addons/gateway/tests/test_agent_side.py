@@ -338,3 +338,10 @@ def test_replay_valve_reaches_the_gateway(gateway_app):
     gw._transport = spy
     gw.glossary()
     assert seen["X-As-Of"] == "2026-10-01T12:00:00Z" and seen["X-Caller"] == "open-webui"
+
+
+def test_seed_roles_plans_one_draft_per_entity_with_all_its_roles():
+    spec = importlib.util.spec_from_file_location("seed_roles", ROOT / "scripts" / "seed_roles.py")
+    seed = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(seed)
+    assert seed.plan({"a": "sensor.x", "b": ["sensor.x", "switch.y"]}) == {"sensor.x": ["a", "b"], "switch.y": ["b"]}

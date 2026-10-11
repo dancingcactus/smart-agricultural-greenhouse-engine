@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Gateway add-on. Versions follow `version` in `config.yaml`.
 
+## 0.11.0
+
+- Roles: a glossary alias written `role:<name>` (for example `role:greenhouse_temperature`) now names the job an entity does. `GET /glossary/roles` lists each role with the approved entities that carry it (drafts with `include_drafts=true`; with an as-of time, as approved then). Malformed role aliases are refused. The SAGE panel text explains the convention, and nothing else on the page changes.
+
 ## 0.10.0
 
 - New run ledger: `POST /runs` records which role, model, prompt version and tool set produced each answer, with tokens and cost; `GET /runs` lists recent rows and `GET /runs/spend` totals calls and dollars per role over a window. The SAGE Run Log filter in Open WebUI uses it to stamp every answer and to enforce daily spend and call caps. The gateway only stores the rows; it is still read-only toward Home Assistant.

@@ -119,6 +119,10 @@ class Gateway:
     def glossary(self, q=None, status=None):
         return self.get("/glossary", q=q, status=status)
 
+    def roles(self, include_drafts=False):
+        """Role name -> entities (aliases written as role:<name> in the glossary). Approved only by default."""
+        return self.get("/glossary/roles", include_drafts="true" if include_drafts else None)
+
     def propose_glossary(self, entity_id, meaning, aliases=None):
         """Suggest a meaning. It is only ever a draft: an owner decides whether to approve it."""
         return self._call("POST", "/glossary/drafts", body={"entity_id": entity_id, "meaning": meaning,
@@ -274,6 +278,15 @@ class Tools:
             return [{k: r.get(k) for k in ("entity_id", "friendly_name", "meaning", "status", "aliases", "device_name",
                                            "usage")} for r in rows[:15]]
         return self._run(go)
+
+    def get_roles(self, include_drafts: bool = False) -> str:
+        """
+        Which entity does which job in this greenhouse, e.g. greenhouse_temperature, target_temp_high, mode_switch.
+        Call this FIRST when you need entity ids; trust it over guesses. Roles are set by the owners in the glossary.
+        :param include_drafts: Also list roles an owner has not approved yet (suggestions only).
+        :return: Role name to the entities that carry it, with their meaning.
+        """
+        return self._run(lambda gw: gw.roles(include_drafts))
 
     def suggest_meaning(self, entity_id: str, meaning: str) -> str:
         """

@@ -28,7 +28,8 @@ details ul { margin:4px 0 0; padding-left:20px; } details li { margin:1px 0; }
 </style></head><body>
 <h1>Entity glossary</h1>
 <p class="sub">Say, in your own words, what each entity is and why it matters. Approved entries are what the
-agent is told to trust; drafts are only suggestions.</p>
+agent is told to trust; drafts are only suggestions. An alias such as <code>role:greenhouse_temperature</code>
+names the job an entity does, so the agent and the watch can find it.</p>
 <div id="banner" class="banner" hidden>You opened this page outside Home Assistant, so it is read-only. Open it from the
 Greenhouse item in the Home Assistant sidebar to approve or edit entries.</div>
 <div class="bar"><input id="q" type="search" placeholder="Filter by name, id or meaning" aria-label="Filter">

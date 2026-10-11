@@ -61,6 +61,18 @@ def list_entries(status: str | None = None, q: str | None = None, include_inacti
         conn.close()
 
 
+@router.get("/roles")
+def roles(include_drafts: bool = False, as_of_ts: float | None = Depends(as_of)):
+    """Roles (aliases like role:greenhouse_temperature) mapped to the entities that carry them.
+
+    Approved entries only unless include_drafts is set; with an as-of time, as the owners had approved them then."""
+    conn = _conn()
+    try:
+        return store.roles(conn, as_of_ts, include_drafts and as_of_ts is None)
+    finally:
+        conn.close()
+
+
 @router.get("/{entity_id}")
 def get_entry(entity_id: str, as_of_ts: float | None = Depends(as_of)):
     conn = _conn()

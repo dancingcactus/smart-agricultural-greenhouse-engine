@@ -284,3 +284,41 @@ def test_usage_falls_back_to_the_older_references_file(tmp_path, monkeypatch):
 
 def test_panel_shows_devices_and_where_used():
     assert "Same device" in PAGE and "Used in" in PAGE and "device: " in PAGE
+
+
+# ---------------- roles: aliases like role:greenhouse_temperature -----------------
+
+def test_roles_come_only_from_approved_entries_and_are_validated(web):
+    agent, owner, key = web
+    edit = owner.put(f"/glossary/{EID}", json={"meaning": "Main greenhouse humidity", "status": "approved",
+                                               "aliases": ["GH RH", "Role:Greenhouse_Humidity"]})
+    assert edit.status_code == 200 and "role:greenhouse_humidity" in edit.json()["aliases"]  # normalised to lowercase
+    roles = agent.get("/glossary/roles", headers=key)
+    assert roles.status_code == 200
+    assert roles.json() == {"greenhouse_humidity": [
+        {"entity_id": EID, "meaning": "Main greenhouse humidity", "status": "approved"}]}
+
+    # An agent draft with a role is visible only when drafts are asked for.
+    other = "input_number.hot_alarm_temp"
+    agent.post("/glossary/drafts", headers=key, json={"entity_id": other, "meaning": "Hot limit",
+                                                      "aliases": ["role:alarm_hot"]})
+    assert "alarm_hot" not in agent.get("/glossary/roles", headers=key).json()
+    assert agent.get("/glossary/roles?include_drafts=true", headers=key).json()["alarm_hot"][0]["status"] == "draft"
+
+    # Malformed roles are refused instead of being silently ignored.
+    for bad in ("role:", "role:Has Space", "role:9lives", "role:x"):
+        r = owner.put(f"/glossary/{EID}", json={"aliases": [bad]})
+        assert r.status_code == 400 and "valid role" in r.json()["detail"], bad
+
+
+def test_roles_as_of_ignore_later_approvals(web, tmp_path):
+    import time
+    _, owner, _ = web
+    before = time.time() - 1
+    owner.put(f"/glossary/{EID}", json={"meaning": "RH", "status": "approved", "aliases": ["role:greenhouse_humidity"]})
+    conn = store.connect(str(tmp_path / "g.sqlite3"))
+    try:
+        assert store.roles(conn, as_of=before) == {}  # before the owner approved it
+        assert "greenhouse_humidity" in store.roles(conn, as_of=time.time() + 10)
+    finally:
+        conn.close()
