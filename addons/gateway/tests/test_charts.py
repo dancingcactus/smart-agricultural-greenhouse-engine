@@ -299,7 +299,7 @@ def test_show_timeline_uses_every_equipment_role_by_default(eq_tool):
     assert fan["starts"] == 2 and fan["short_runs"] == 1 and fan["active_minutes"] == 120 + 2.4
     assert facts["equipment"]["Shutters"]["now"] == "open"
     assert facts["greenhouse_temperature"]["target_band_time_pct"] is not None and "not why" in facts["note"]
-    one, f1 = eq_tool.show_timeline("equipment_north_fan", with_temperature=False)
+    _, f1 = eq_tool.show_timeline("equipment_north_fan", with_temperature=False)
     assert "greenhouse_temperature" not in f1 and set(f1["equipment"]) == {"North fan"}
 
 
