@@ -2,12 +2,13 @@
 title: SAGE Run Log
 author: SAGE
 description: Stamps every SAGE answer (role, model, prompt hash, tool set, tokens, cost) in the gateway's run ledger and blocks a role once its daily cap is reached.
-version: 0.1.1
+version: 0.1.2
 """
 
 import hashlib
 import json
 import logging
+import re
 
 import httpx
 from pydantic import BaseModel, Field
@@ -32,6 +33,13 @@ def prompt_hash(system: str | None) -> str | None:
     return hashlib.sha256(system.encode()).hexdigest()[:10] if system else None
 
 
+def hash_from_description(description: str | None) -> str | None:
+    """Open WebUI hides a preset's system prompt from filters, so read the hash the builder wrote
+    into the description ("... prompt 0123456789"). It goes stale if the prompt is edited in the UI."""
+    found = re.search(r"\bprompt ([0-9a-f]{10})\b", description or "")
+    return found.group(1) if found else None
+
+
 def over_cap(role: str, spend: dict, cost_caps: dict, call_caps: dict) -> str | None:
     """Why this role may not run now, or None. `spend` is the gateway's /runs/spend `roles` object."""
     used = spend.get(role) or {}
@@ -54,7 +62,7 @@ def run_row(role: str, model: dict, message: dict, chat_id, message_id, user_id,
         "model": info.get("base_model_id") or message.get("model"),
         # OpenRouter reports which host answered; Open WebUI does not always keep it, so this can be empty.
         "provider": message.get("provider") or usage.get("provider"),
-        "prompt_hash": prompt_hash((info.get("params") or {}).get("system")),
+        "prompt_hash": hash_from_description(meta.get("description")),
         "tool_set": f"{tool_set}:{','.join(sorted(meta.get('toolIds') or []))}".strip(":") or None,
         "prompt_tokens": usage.get("input_tokens") or usage.get("prompt_tokens"),
         "completion_tokens": usage.get("output_tokens") or usage.get("completion_tokens"),

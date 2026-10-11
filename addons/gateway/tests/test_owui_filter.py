@@ -1,7 +1,6 @@
 """The Open WebUI run-log filter: role detection, cap decisions and the row it posts."""
 
 import asyncio
-import hashlib
 import importlib.util
 import sys
 from pathlib import Path
@@ -29,6 +28,13 @@ def test_prompt_hash_matches_the_preset_builder():
     assert preset["meta"]["description"].endswith(mod.prompt_hash(preset["params"]["system"]))
 
 
+def test_hash_from_description_matches_the_builder():
+    preset = {"info": {"meta": {"description": "SAGE mid role. prompt 0e61058c53"}}}
+    assert mod.hash_from_description("SAGE mid role. prompt 0e61058c53") == "0e61058c53"
+    assert mod.run_row("mid", preset, {}, None, None, None, "")["prompt_hash"] == "0e61058c53"
+    assert mod.hash_from_description("no hash here") is None and mod.hash_from_description(None) is None
+
+
 def test_over_cap():
     spend = {"reviewer": {"calls": 10, "cost_usd": 0.4}, "mid": {"calls": 3, "cost_usd": 1.2}}
     caps, calls = {"reviewer": 1.0, "mid": 1.0}, {"reviewer": 10}
@@ -38,12 +44,12 @@ def test_over_cap():
 
 
 def test_run_row_collects_the_stamp():
-    model = {"info": {"base_model_id": "z-ai/glm-5.3", "params": {"system": "hello"},
-                      "meta": {"toolIds": ["sage_gateway"]}}}
+    model = {"info": {"base_model_id": "z-ai/glm-5.3",
+                      "meta": {"toolIds": ["sage_gateway"], "description": "SAGE builder role. prompt abcdef0123"}}}
     msg = {"usage": {"input_tokens": 100, "output_tokens": 20, "cost": 0.003}}
     row = mod.run_row("builder", model, msg, "c1", "m1", "u1", "abc123")
     assert row["model"] == "z-ai/glm-5.3" and row["tool_set"] == "abc123:sage_gateway"
-    assert row["prompt_hash"] == hashlib.sha256(b"hello").hexdigest()[:10]
+    assert row["prompt_hash"] == "abcdef0123"
     assert (row["prompt_tokens"], row["completion_tokens"], row["cost_usd"]) == (100, 20, 0.003)
 
 
