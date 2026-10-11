@@ -57,8 +57,10 @@ links to that address.
    stamps each SAGE answer (role, model, prompt hash, tokens, cost) in the gateway and blocks a role
    after its daily cap (defaults: small $0.50, analyst $1, builder $1, reviewer $1 and 10 calls).
    Review spend at `/runs/spend`.
-4. **Presets.** Run `python3 scripts/build_presets.py`, then Workspace → Models → Import
-   `owui/presets/sage-presets.json`. Install the tool and the filter first; the presets refer to
+4. **Presets.** Run `python3 scripts/build_presets.py`. Your own entity ids live in a separate
+   private repo (a clone of it next to this one, or `SAGE_PRIVATE_DIR`); the script writes presets that
+   include them to `presets/sage-presets.json` there. Import that file under Workspace → Models →
+   Import (the public `owui/presets/sage-presets.json` is generic and has no entity ids). Install the tool and the filter first; the presets refer to
    them by id (`sage_gateway`, `sage_run_log`).
 5. **Try it.** Start a chat with a SAGE model, switch on the SAGE Gateway tool and the terminal, and
    ask: *"Find the sensors that measure humidity and tell me how they are recorded."*

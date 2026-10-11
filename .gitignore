@@ -5,5 +5,3 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 *.sqlite3
-context/private/
-owui/presets/private/

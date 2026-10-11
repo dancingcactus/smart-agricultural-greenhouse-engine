@@ -8,12 +8,16 @@ Import the JSON in Open WebUI: Workspace -> Models -> Import.
 """
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 CTX = ROOT / "context"
+# Installation-specific notes live in a separate private repo (entities.md inside it). Point SAGE_PRIVATE_DIR
+# at a clone of it; the default is a sibling checkout named sage-greenhouse-private.
+PRIVATE = Path(os.environ.get("SAGE_PRIVATE_DIR", ROOT.parent / "sage-greenhouse-private"))
 
 
 def build(private: bool = False) -> list[dict]:
@@ -25,7 +29,7 @@ def build(private: bool = False) -> list[dict]:
     )
     if private:
         # Installation-specific notes (entity ids). Gitignored: they never reach the public repo.
-        context += "\n\n## Installation entities\n" + (CTX / "private/entities.md").read_text().strip()
+        context += "\n\n## Installation entities\n" + (PRIVATE / "entities.md").read_text().strip()
     out = []
     for role, r in cfg["roles"].items():
         role_prompt = (CTX / f"prompts/{role}.md").read_text().strip()
@@ -57,8 +61,8 @@ if __name__ == "__main__":
     path = ROOT / "owui/presets/sage-presets.json"
     path.write_text(json.dumps(build(), indent=2) + "\n")
     print(f"wrote {path}")
-    if (CTX / "private/entities.md").exists():
-        private_path = ROOT / "owui/presets/private/sage-presets.json"
+    if (PRIVATE / "entities.md").exists():
+        private_path = PRIVATE / "presets" / "sage-presets.json"
         private_path.parent.mkdir(exist_ok=True)
         private_path.write_text(json.dumps(build(private=True), indent=2) + "\n")
-        print(f"wrote {private_path} (gitignored: import this one)")
+        print(f"wrote {private_path} (private repo: import this one)")
