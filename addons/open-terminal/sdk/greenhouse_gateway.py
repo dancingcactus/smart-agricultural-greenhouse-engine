@@ -124,6 +124,10 @@ class Gateway:
     def glossary(self, q=None, status=None):
         return self.get("/glossary", q=q, status=status)
 
+    def watch(self, stale_minutes=30, flat_hours=3, band_minutes=20):
+        """Run the hourly code-only checks now: green/amber/red, findings with evidence, and what was skipped."""
+        return self.get("/watch", stale_minutes=stale_minutes, flat_hours=flat_hours, band_minutes=band_minutes)
+
     def roles(self, include_drafts=False):
         """Role name -> entities (aliases written as role:<name> in the glossary). Approved only by default."""
         return self.get("/glossary/roles", include_drafts="true" if include_drafts else None)

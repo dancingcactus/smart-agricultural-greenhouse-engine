@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Gateway add-on. Versions follow `version` in `config.yaml`.
 
+## 0.12.0
+
+- New `GET /watch`: plain-code health and range checks on the live greenhouse, using the approved roles. It reports stale, unavailable or flat readings, low batteries on the same device, the greenhouse temperature staying outside the live setpoints or past the alarm limits, and thermostat faults, as green, amber or red with evidence. Roles that are not approved yet are listed as missing and their checks are skipped. It is live-only, read-only and uses no model.
+
 ## 0.11.2
 
 - Each entity in the SAGE panel now shows its roles as green outlined chips (for example "role: greenhouse_temperature"). Typing `role:` in the filter box lists every entity that has one.

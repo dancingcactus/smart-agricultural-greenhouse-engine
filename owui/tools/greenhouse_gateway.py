@@ -119,6 +119,10 @@ class Gateway:
     def glossary(self, q=None, status=None):
         return self.get("/glossary", q=q, status=status)
 
+    def watch(self, stale_minutes=30, flat_hours=3, band_minutes=20):
+        """Run the hourly code-only checks now: green/amber/red, findings with evidence, and what was skipped."""
+        return self.get("/watch", stale_minutes=stale_minutes, flat_hours=flat_hours, band_minutes=band_minutes)
+
     def roles(self, include_drafts=False):
         """Role name -> entities (aliases written as role:<name> in the glossary). Approved only by default."""
         return self.get("/glossary/roles", include_drafts="true" if include_drafts else None)
@@ -278,6 +282,15 @@ class Tools:
             return [{k: r.get(k) for k in ("entity_id", "friendly_name", "meaning", "status", "aliases", "device_name",
                                            "usage")} for r in rows[:15]]
         return self._run(go)
+
+    def run_watch(self) -> str:
+        """
+        Run the greenhouse health checks right now (plain code, no guesswork): stale or stuck sensors, low
+        batteries, the greenhouse temperature outside the live setpoints or alarm limits, thermostat faults.
+        :return: status green/amber/red, findings with evidence, current readings, roles still missing, and
+                 what was not checked. Report only what it found; "nothing to report" is a normal answer.
+        """
+        return self._run(lambda gw: gw.watch())
 
     def get_roles(self, include_drafts: bool = False) -> str:
         """
