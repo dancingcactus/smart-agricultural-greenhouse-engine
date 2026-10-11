@@ -12,4 +12,11 @@ row_order: TODO
 # Map sensors to rows once known, e.g.:
 # sensors:
 #   row1: [sensor.example_temp_row1]
-sensors: {}
+# No per-row sensors. All sensors are in the center of the greenhouse.
+sensors:
+  center: []   # TODO: fill in with entity ids found via the catalog
+per_row_measurements: false
+walls:
+  north: insulated
+  other: single plastic siding
+roof: inflated_plastic

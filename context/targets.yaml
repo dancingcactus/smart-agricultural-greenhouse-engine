@@ -1,5 +1,10 @@
-# Targets are placeholders until the grower sets them. The agent must not
-# invent targets; if a value is null it should say so and ask.
+# Targets are the grower's. null means not yet set: the agent must not invent
+# one and should ask. The reference block is general petunia guidance for
+# discussion only; it is NOT a target until the grower copies it above.
+season: {start: february, end: may}
 temperature_c: {day_min: null, day_max: null, night_min: null, night_max: null}
 relative_humidity_pct: {min: null, max: null}
-notes: "Fill in from the crop's requirements."
+reference_petunia_unconfirmed:
+  temperature_c: {day: "18-24", night: "12-16"}
+  relative_humidity_pct: "50-70, avoid sustained >85 (botrytis risk)"
+notes: "Confirm or replace the reference values for your varieties and stage."
