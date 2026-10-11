@@ -1,0 +1,5 @@
+# Targets are placeholders until the grower sets them. The agent must not
+# invent targets; if a value is null it should say so and ask.
+temperature_c: {day_min: null, day_max: null, night_min: null, night_max: null}
+relative_humidity_pct: {min: null, max: null}
+notes: "Fill in from the crop's requirements."

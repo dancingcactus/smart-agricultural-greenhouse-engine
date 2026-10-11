@@ -1,0 +1,15 @@
+# Basket layout. Generic and non-personal (the repo is public).
+orientation:
+  long_axis: southeast_to_northwest
+  position_1_end: southeast
+rows:
+  - {id: row1, baskets: 30, approx: true}
+  - {id: row2, baskets: 30, approx: true}
+  - {id: row3, baskets: 30, approx: true}
+  - {id: row4, baskets: 30, approx: true}
+# Row order across the width (which row is nearest which wall) is not yet known.
+row_order: TODO
+# Map sensors to rows once known, e.g.:
+# sensors:
+#   row1: [sensor.example_temp_row1]
+sensors: {}
