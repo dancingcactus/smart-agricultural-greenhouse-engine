@@ -128,6 +128,15 @@ class Gateway:
         """Run the hourly code-only checks now: green/amber/red, findings with evidence, and what was skipped."""
         return self.get("/watch", stale_minutes=stale_minutes, flat_hours=flat_hours, band_minutes=band_minutes)
 
+    def cadence(self):
+        """The current mode and which loops (watch, daily, evening, weekly) it allows."""
+        return self.get("/review/cadence")
+
+    def daily_review(self, hours=24):
+        """The last `hours` in numbers (time in band, night humidity, equipment runtime), the watch findings and
+        the 72-hour forecast risks, as green/amber/red."""
+        return self.get("/review/daily", hours=hours)
+
     def roles(self, include_drafts=False):
         """Role name -> entities (aliases written as role:<name> in the glossary). Approved only by default."""
         return self.get("/glossary/roles", include_drafts="true" if include_drafts else None)
