@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Sandbox add-on. Versions follow `version` in `config.yaml`.
 
+## 0.2.3
+
+- Fix: the base image has no pip, so the forecasting models (Chronos-2, LightGBM, PyTorch) could not install (found from the 0.2.2 log: `No module named pip`). The build now bootstraps pip with `ensurepip` (falling back to get-pip.py), installs the models, then removes pip again so the sandbox stays as locked down as before.
+
 ## 0.2.2
 
 - Fix: in 0.2.1 a failed model install exited before its error log was saved, so a failure looked the same as success in the add-on log. The steps now run in a subshell and the log is always kept on failure.
