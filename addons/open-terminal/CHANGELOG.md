@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Sandbox add-on. Versions follow `version` in `config.yaml`.
 
+## 0.2.5
+
+- Fix: `lightgbm_runtime_forecaster()` failed with "scikit-learn is required" because it used LightGBM's scikit-learn wrapper, and the sandbox has no scikit-learn. It now uses LightGBM's own training interface, which needs only LightGBM and numpy. Found by the first live test of the LightGBM forecaster.
+
 ## 0.2.4
 
 - The gateway client's `history_resampled()` and `history_runtime()` take a `source` ("auto", "vm" or "ha"). Needs SAGE Gateway 0.16.0 or later for months of history.

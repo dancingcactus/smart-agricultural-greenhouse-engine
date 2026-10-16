@@ -293,6 +293,30 @@ def chronos2_forecaster(pipeline=None, model_path=None, quantiles=(0.1, 0.5, 0.9
     return run
 
 
+class _NativeLightGBM:
+    """LightGBM's own training interface, with `fit` and `predict` like a scikit-learn model.
+
+    The scikit-learn wrapper (`LGBMRegressor`) needs scikit-learn, which the sandbox does not have; this needs only
+    LightGBM and numpy.
+    """
+
+    def __init__(self, rounds=150, params=None):
+        self.rounds = rounds
+        self.params = {"objective": "regression", "learning_rate": 0.05, "num_leaves": 7, "min_data_in_leaf": 3,
+                       "min_data_in_bin": 1, "verbosity": -1, "seed": 0, "num_threads": 1, **(params or {})}
+        self.booster = None
+
+    def fit(self, xs, ys):
+        import lightgbm as lgb
+        import numpy as np
+        self.booster = lgb.train(self.params, lgb.Dataset(np.array(xs, dtype=float), np.array(ys, dtype=float)),
+                                 num_boost_round=self.rounds)
+
+    def predict(self, xs):
+        import numpy as np
+        return [float(v) for v in self.booster.predict(np.array(xs, dtype=float))]
+
+
 def lightgbm_runtime_forecaster(model_factory=None, extra_features=None, min_rows=14):
     """A forecaster for a daily series such as hours of GAHT fan runtime (grid of one day).
 
@@ -301,11 +325,7 @@ def lightgbm_runtime_forecaster(model_factory=None, extra_features=None, min_row
     temperature}). Multi-day horizons feed each prediction back in. With fewer than `min_rows` usable days it
     falls back to the baseline rather than overfit.
     """
-    def default_factory():
-        import lightgbm as lgb
-        return lgb.LGBMRegressor(n_estimators=150, learning_rate=0.05, num_leaves=7, min_child_samples=3, verbose=-1)
-
-    factory = model_factory or default_factory
+    factory = model_factory or _NativeLightGBM
 
     def row(values, stamps_i, t, extra):
         recent = [v for v in values[stamps_i - 7:stamps_i] if _known(v)]

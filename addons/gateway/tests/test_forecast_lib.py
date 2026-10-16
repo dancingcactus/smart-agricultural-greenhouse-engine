@@ -157,6 +157,16 @@ def test_lightgbm_runtime_forecaster_uses_the_model_and_falls_back_when_data_is_
         f(hourly(100), 3, H)
 
 
+def test_default_lightgbm_model_needs_no_scikit_learn():
+    pytest.importorskip("lightgbm")
+    pytest.importorskip("numpy")
+    days = [[T0 + i * D, 4.0 + (i % 7) + 0.1 * i] for i in range(60)]
+    out = gf.lightgbm_runtime_forecaster()(days, 3, D)  # the default model, not a stand-in
+    assert len(out) == 3 and all(v >= 0 for v in out) and abs(out[0] - (4.0 + (60 % 7) + 6.0)) < 2
+    result = gf.rolling_backtest(days, gf.lightgbm_runtime_forecaster(), 1, D, folds=14, min_history=21)
+    assert result["folds_scored"] == 14 and result["skill"] > 0
+
+
 def test_runtime_series_and_series_from():
     item = {"days": [{"date": "2026-10-01", "hours_on": 6.0, "complete": True},
                      {"date": "2026-10-02", "hours_on": 1.0, "complete": False}]}
