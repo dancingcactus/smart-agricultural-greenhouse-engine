@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Sandbox add-on. Versions follow `version` in `config.yaml`.
 
+## 0.2.2
+
+- Fix: in 0.2.1 a failed model install exited before its error log was saved, so a failure looked the same as success in the add-on log. The steps now run in a subshell and the log is always kept on failure.
+
 ## 0.2.1
 
 - A failure installing the forecasting models no longer stops the image from building (0.2.0 failed to build on a live install with no usable error). The reason is saved in the image and printed in the add-on log at start, and the gateway client and `greenhouse_forecast` baseline tools still work without the models.

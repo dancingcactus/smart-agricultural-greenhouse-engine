@@ -1,9 +1,10 @@
 #!/bin/sh
 # Install Chronos-2, LightGBM and CPU PyTorch while the build still has internet. Never fails the build:
-# on any error the full output is kept in /opt/models/INSTALL_FAILED.log instead.
+# on any error the full output is kept in /opt/models/INSTALL_FAILED.log instead. The steps run in a subshell so that
+# an `exit 1` ends only them, not this script (a brace group would exit before the log is saved).
 LOG=/tmp/install_models.log
 mkdir -p /opt/models
-{
+(
     set -x
     id
     python3 --version
@@ -16,7 +17,7 @@ mkdir -p /opt/models
         torch "chronos-forecasting>=2.3,<3" "lightgbm>=4,<5" numpy pandas huggingface_hub || exit 1
     HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 python3 -c "from huggingface_hub import snapshot_download; snapshot_download('amazon/chronos-2', revision='${CHRONOS_REVISION:-main}', local_dir='/opt/models/chronos-2')" || exit 1
     python3 -c "import torch, lightgbm, pandas, numpy; from chronos import Chronos2Pipeline" || exit 1
-} >"$LOG" 2>&1
+) >"$LOG" 2>&1
 if [ $? -ne 0 ]; then
     cp "$LOG" /opt/models/INSTALL_FAILED.log
     echo "Model install failed; see /opt/models/INSTALL_FAILED.log in the image" >&2
