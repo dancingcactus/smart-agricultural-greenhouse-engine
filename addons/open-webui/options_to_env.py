@@ -12,6 +12,9 @@ import sys
 OPENROUTER_URL = "https://openrouter.ai/api/v1"
 TERMINAL_ID = "greenhouse-sandbox"
 MIN_KEY_LENGTH = 16
+# Web search runs in Open WebUI's backend, never in the sandbox. Engines that need a key and the variable they read.
+SEARCH_KEYS = {"brave": "BRAVE_SEARCH_API_KEY", "tavily": "TAVILY_API_KEY"}
+SEARCH_ENGINES = ("none", "duckduckgo", *SEARCH_KEYS)
 
 
 def build_env(options: dict) -> dict:
@@ -26,7 +29,17 @@ def build_env(options: dict) -> dict:
         raise ValueError(f"terminal_api_key must be at least {MIN_KEY_LENGTH} characters and match the sandbox's api_key")
     models = [m.strip() for m in options.get("allowed_models") or [] if m and m.strip()]
     port = int(options.get("terminal_port") or 8000)
+    engine = (options.get("web_search_engine") or "none").strip().lower()
+    if engine not in SEARCH_ENGINES:
+        raise ValueError(f"web_search_engine must be one of {', '.join(SEARCH_ENGINES)}")
+    search_key = (options.get("web_search_api_key") or "").strip()
+    if engine in SEARCH_KEYS and not search_key:
+        raise ValueError(f"web_search_api_key is required for web_search_engine {engine}")
+    search = {"ENABLE_WEB_SEARCH": "false"} if engine == "none" else {
+        "ENABLE_WEB_SEARCH": "true", "WEB_SEARCH_ENGINE": engine,
+        **({SEARCH_KEYS[engine]: search_key} if engine in SEARCH_KEYS else {})}
     return {
+        **search,
         "PORT": "8080",
         "DATA_DIR": "/data/webui",
         "WEBUI_SECRET_KEY_FILE": "/data/.webui_secret_key",  # survives rebuilds, so logins stay valid
@@ -52,7 +65,6 @@ def build_env(options: dict) -> dict:
         # No other ways out and no extras: users cannot add their own endpoints, and nothing is shared.
         "ENABLE_DIRECT_CONNECTIONS": "false",
         "ENABLE_COMMUNITY_SHARING": "false",
-        "ENABLE_WEB_SEARCH": "false",
         "ENABLE_IMAGE_GENERATION": "false",
         "ENABLE_CODE_EXECUTION": "false",
         "ENABLE_CODE_INTERPRETER": "false",

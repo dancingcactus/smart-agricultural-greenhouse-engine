@@ -1,5 +1,5 @@
 name: SAGE Agent
-version: "0.2.1"
+version: "0.3.0"
 slug: greenhouse_webui
 description: Chat front end for the SAGE (Open WebUI), using models from OpenRouter
 url: https://github.com/dancingcactus/smart-agricultural-greenhouse-engine
@@ -23,6 +23,8 @@ options:
   terminal_api_key: ""
   allow_signup: true
   allowed_models: []
+  web_search_engine: none
+  web_search_api_key: ""
 schema:
   openrouter_api_key: password
   terminal_host: str
@@ -31,3 +33,5 @@ schema:
   allow_signup: bool
   allowed_models:
     - str
+  web_search_engine: list(none|duckduckgo|brave|tavily)
+  web_search_api_key: password?

@@ -28,3 +28,14 @@ configuration:
     description: >-
       OpenRouter model IDs to offer, one per line, for example anthropic/claude-haiku-4.5. Leave empty
       to offer every model OpenRouter lists (hundreds). Models you list here are the only ones that can be chosen.
+  web_search_engine:
+    name: Web search engine
+    description: >-
+      Lets the agent look things up on the web from the chat (turn "Web search" on for a message). The search
+      runs inside Open WebUI, not in the sandbox, which stays closed to the internet. none turns it off;
+      duckduckgo needs no key; brave and tavily need a key in the next option.
+  web_search_api_key:
+    name: Web search API key
+    description: >-
+      The key for the brave or tavily search service. Leave empty for none or duckduckgo. Create a dedicated key
+      and set a usage limit on it with the provider.

@@ -33,7 +33,7 @@ The thresholds are constants at the top of `gateway/review.py`; they are startin
 ## Not built yet
 
 Evening check, weekly review and improvement review; water, nutrient and camera checks (no data yet); GAHT charging
-checks; equipment commanded versus observed; comparing against a week earlier; scoring the agent's earlier predictions;
+checks; equipment commanded versus observed; comparing against a week earlier; scoring the agent's earlier predictions inside the daily review (the agent can score them itself with `greenhouse_forecast.score_prediction`, see `docs/forecasting.md`);
 failure notifications and the dashboard "last report" time.
 
 ## Running it

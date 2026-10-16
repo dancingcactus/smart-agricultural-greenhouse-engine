@@ -19,6 +19,7 @@ from gateway.routes import (
     metric_catalog,
     review,
     runs,
+    series,
     snapshot,
     vm,
     watch,
@@ -61,6 +62,7 @@ app.include_router(calls.router)
 app.include_router(runs.router)
 app.include_router(review.router)
 app.include_router(watch.router)
+app.include_router(series.router)
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)

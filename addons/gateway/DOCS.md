@@ -49,6 +49,17 @@ See the project README for the full API (catalog, read-only Home Assistant and V
 routes, call log). The API port (8099) is off by default; enable it on the Network tab only when
 you need it, and set `api_key` first.
 
+## History for forecasting
+
+Two read-only routes serve evenly spaced data to the agent's forecasting helpers (`docs/forecasting.md`). Both honour
+`X-As-Of` and take either `entity_id` or an approved `role`.
+
+- `GET /history/resampled?role=greenhouse_temperature&step=15m&start=...&end=...`: time-weighted means on a fixed
+  grid (5 minutes to 24 hours), `[bucket_start_epoch, value]`, with `null` where the sensor reported nothing. Gaps are
+  never filled in. At most 93 days and 20,000 points per request.
+- `GET /history/runtime?role=equipment_gaht_fan&days=14`: hours switched on per local day, with the number of runs and
+  whether the day is `complete`. The gateway makes no predictions and stores none.
+
 ## Recording helpers into VictoriaMetrics
 
 Home Assistant's InfluxDB integration only writes when a value changes, so a setpoint nobody touches

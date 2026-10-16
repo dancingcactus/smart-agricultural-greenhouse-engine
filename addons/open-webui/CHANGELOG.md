@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Agent add-on (Open WebUI). Versions follow `version` in `config.yaml`.
 
+## 0.3.0
+
+- New options `web_search_engine` (none, duckduckgo, brave or tavily) and `web_search_api_key`. Web search is still off by default. It runs inside Open WebUI; the SAGE Sandbox stays closed to the internet.
+
 ## 0.2.1
 
 - Renamed to **SAGE Agent**. The add-on slug, options and data are unchanged.

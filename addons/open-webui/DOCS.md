@@ -9,3 +9,10 @@ them here, not in Open WebUI.
 
 Browse to `http://<your Home Assistant address>:8080`. The first account created becomes the admin;
 then turn `allow_signup` off. See `docs/agent-side-setup.md` in the repository for setup.
+
+## Web search
+
+Off by default. Set `web_search_engine` to `duckduckgo` (no key), or `brave` / `tavily` with `web_search_api_key`,
+and the agent can look things up from the chat when you switch Web search on for a message. The search runs inside
+this add-on; the SAGE Sandbox stays closed to the internet. Search results are untrusted text: treat what the
+agent reports from the web as a lead to check, not as greenhouse data.
