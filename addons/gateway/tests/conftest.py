@@ -7,6 +7,7 @@ from gateway import deps
 def _isolated_gateway_env(tmp_path, monkeypatch):
     """Keep tests off the real call log, API key and forced as-of."""
     monkeypatch.setenv("GATEWAY_CALL_LOG", str(tmp_path / "calls.jsonl"))
+    monkeypatch.setenv("CATALOG_DB", str(tmp_path / "catalog.sqlite3"))  # never create a catalog file in the cwd
     monkeypatch.delenv("GATEWAY_API_KEY", raising=False)
     monkeypatch.delenv("GATEWAY_AS_OF", raising=False)
     yield

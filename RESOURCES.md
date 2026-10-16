@@ -10,10 +10,15 @@ added.
 - **What:** numeric history of one to five entities (or roles) on a fixed grid, for forecasting.
 - **Parameters:** `entity_id` or `role` (exactly one), `step` (`5m` to `24h`, default `1h`), `start`, `end`.
 - **Returns:** `series: [{entity_id, points: [[bucket_start_epoch, value_or_null], ...]}]`.
-- **Sampling:** time-weighted mean per bucket from Home Assistant history (a reading holds until the next one).
-  Only whole buckets inside the window are returned.
-- **Gaps and quirks:** a bucket with no numeric reading is `null`, never filled in. `unavailable`, `unknown` and
-  other non-numbers count as no reading. Window at most 93 days and 20,000 points.
+- **Parameters (also):** `source`: `auto` (default), `vm` or `ha`.
+- **Sampling:** time-weighted mean per bucket (a reading holds until the next one). Only whole buckets inside the
+  window are returned. `auto` reads VictoriaMetrics (months of history, up to 400 days) and falls back to Home
+  Assistant's own history (about ten days) for an entity not recorded there. Each series says which `source` it came
+  from, `series_merged` (stored series merged into it) and `first_sample`.
+- **Gaps and quirks:** a bucket with no numeric reading is `null`, never filled in. From Home Assistant,
+  `unavailable`, `unknown` and other non-numbers count as no reading; VictoriaMetrics records none of those, so a
+  sensor that stopped reporting holds its last value there. Entities can have two stored series (a label change on
+  2026-03-08 for the greenhouse temperature and humidity); they are merged by time. At most 20,000 points.
 - **Units:** whatever the entity reports; the endpoint does not convert.
 - **Cannot tell you:** why a value changed, what the setpoint was at the time, or anything about entities without
   recorded history.
@@ -21,7 +26,7 @@ added.
 ## Equipment runtime per day: `GET /history/runtime`
 
 - **What:** hours switched on per local day for equipment such as `equipment_gaht_fan`.
-- **Parameters:** `entity_id` or `role`, `days` (1 to 93, default 14), `end`, `timezone` (default: Home Assistant's).
+- **Parameters:** `entity_id` or `role`, `days` (1 to 400, or 93 with `source=ha`; default 14), `end`, `timezone` (default: Home Assistant's), `source`.
 - **Returns:** `series: [{entity_id, days: [{date, hours_on, runs, known_hours, complete}]}]`.
 - **Gaps and quirks:** `complete` is false for a day the window only partly covers, or where the state was unknown
   for more than 15 minutes. Treat incomplete days as missing, not as low runtime. States counted as on: on, open,

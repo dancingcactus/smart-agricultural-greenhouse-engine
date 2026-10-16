@@ -5,6 +5,7 @@ show updates for them). The version is in each file's header.
 
 ## SAGE Gateway tool (`tools/greenhouse_gateway.py`)
 
+- **0.5.2**: the embedded gateway client's `history_resampled` and `history_runtime` take `source`. Needs SAGE Gateway 0.16.0 for months of history.
 - **0.5.1**: the embedded gateway client gains `history_resampled` and `history_runtime` (no new chat tools). Needs SAGE Gateway 0.15.0 or later for them.
 - **0.5.0**: new `run_cadence` (which review loops the current mode allows; every scheduled run calls it first) and `run_daily_review` (the daily review's numbers). Needs SAGE Gateway 0.14.0 or later. Paste the new `context/prompts/automation_daily.md` into a daily Automation and update the watch Automation's prompt.
 - **0.4.0**: two more inline visuals for the grower. `show_timeline`: when each piece of equipment ran (one lane per `equipment_*` role), lined up with the greenhouse temperature and its target band, with running time, starts and short runs (under 5 minutes) per lane. It shows what changed state and when, not why. `show_values`: number tiles for current readings, each with its unit, how long ago it updated, inside/below/above target (with a position meter for the greenhouse temperature), the change over the last hour and a 24 hour sparkline; stale or unavailable readings are flagged. Needs SAGE Gateway 0.12.0 or later and approved roles.

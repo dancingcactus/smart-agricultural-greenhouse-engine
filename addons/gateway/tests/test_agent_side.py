@@ -268,8 +268,10 @@ def test_client_has_the_forecasting_history_methods(gateway_app):
     gw = sdk.Gateway(URL, "k", transport=spy)
     gw.history_resampled(role="greenhouse_temperature", step="15m", start="2026-10-01T00:00:00Z")
     gw.history_runtime(role="equipment_gaht_fan", days=7)
+    gw.history_resampled(entity_id="sensor.a", source="vm")
     assert "/history/resampled?role=greenhouse_temperature&step=15m&start=2026-10-01T00%3A00%3A00Z" in seen[0]
     assert "/history/runtime?role=equipment_gaht_fan&days=7" in seen[1]
+    assert seen[2].endswith("/history/resampled?entity_id=sensor.a&step=1h&source=vm")
 
 
 def test_client_sends_the_as_of_time_and_caller_and_needs_a_url():
