@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Sandbox add-on. Versions follow `version` in `config.yaml`.
 
+## 0.2.4
+
+- The gateway client's `history_resampled()` and `history_runtime()` take a `source` ("auto", "vm" or "ha"). Needs SAGE Gateway 0.16.0 or later for months of history.
+
 ## 0.2.3
 
 - Fix: the base image has no pip, so the forecasting models (Chronos-2, LightGBM, PyTorch) could not install (found from the 0.2.2 log: `No module named pip`). The build now bootstraps pip with `ensurepip` (falling back to get-pip.py), installs the models, then removes pip again so the sandbox stays as locked down as before.

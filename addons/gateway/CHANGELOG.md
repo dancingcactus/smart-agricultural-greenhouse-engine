@@ -2,6 +2,11 @@
 
 All notable changes to the SAGE Gateway add-on. Versions follow `version` in `config.yaml`.
 
+## 0.16.0
+
+- `GET /history/resampled` and `GET /history/runtime` now read from VictoriaMetrics, which keeps months of history, instead of only Home Assistant's own history (about ten days). New `source` parameter: `auto` (default; VictoriaMetrics first, Home Assistant for an entity not recorded there or when VictoriaMetrics cannot be read, with a warning), `vm` or `ha`. Each series reports its `source`, how many stored series were merged (`series_merged`; an entity can have more than one after a label change) and `first_sample`. Windows up to 400 days on VictoriaMetrics (93 on Home Assistant). The as-of time still clips every query.
+- Difference to know: VictoriaMetrics records no "unavailable" states, so a sensor that stopped reporting holds its last value in the resampled data, where the Home Assistant path shows a gap.
+
 ## 0.15.0
 
 - New `GET /history/resampled`: numeric history on a fixed grid (5 minutes to 24 hours) for the agent's forecasting helpers. Time-weighted means, `null` for gaps, whole buckets only, clipped to the as-of time. Takes `entity_id` or an approved `role`.

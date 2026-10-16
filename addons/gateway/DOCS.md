@@ -56,9 +56,16 @@ Two read-only routes serve evenly spaced data to the agent's forecasting helpers
 
 - `GET /history/resampled?role=greenhouse_temperature&step=15m&start=...&end=...`: time-weighted means on a fixed
   grid (5 minutes to 24 hours), `[bucket_start_epoch, value]`, with `null` where the sensor reported nothing. Gaps are
-  never filled in. At most 93 days and 20,000 points per request.
+  never filled in. At most 20,000 points per request.
 - `GET /history/runtime?role=equipment_gaht_fan&days=14`: hours switched on per local day, with the number of runs and
   whether the day is `complete`. The gateway makes no predictions and stores none.
+- Both take `source`: `auto` (the default) reads VictoriaMetrics, which keeps months of history (windows up to 400
+  days), and uses Home Assistant's own history (about ten days, at most 93 days per request) for an entity that is
+  not recorded in VictoriaMetrics or when VictoriaMetrics cannot be read (a warning says so). `vm` and `ha` force one.
+  Each series reports its `source`, `series_merged` (an entity can have more than one stored series after a label
+  change; they are merged by time) and `first_sample`. VictoriaMetrics records no "unavailable" states, so a sensor
+  that stopped reporting holds its last value there. It finds an entity's series through the metric catalog, so the
+  catalog needs at least one run.
 
 ## Recording helpers into VictoriaMetrics
 

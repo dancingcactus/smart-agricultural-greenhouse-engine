@@ -29,6 +29,14 @@ predicts or stores a prediction, so it stays read-only.
    `gf.calibration(scores)`. Intervals that hold far less often than their stated level mean the agent is
    overconfident.
 
+## How far back the history goes
+
+`history_resampled` and `history_runtime` read VictoriaMetrics by default (`source="auto"`), so 30 to 60 day
+backtests work. Each series reports its `source` and `first_sample`; check them before trusting a long backtest. An
+entity that is not recorded in VictoriaMetrics falls back to Home Assistant's own history, which reaches back only
+about ten days. Under an as-of time, look entities up by `entity_id`: a role is read as the owners had approved it at
+that time, so a role approved later does not exist yet in a replay.
+
 ## Writing your own forecaster
 
 A forecaster is `f(history, horizon, step)`. `history` is `[[epoch, value_or_None], ...]` on an even grid up to the

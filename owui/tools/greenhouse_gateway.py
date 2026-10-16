@@ -1,7 +1,7 @@
 """
 title: SAGE Gateway
 author: SAGE
-version: 0.5.1
+version: 0.5.2
 description: Read-only access to the greenhouse's data (entities, history, weather forecasts, configuration, glossary) through the SAGE Gateway. It cannot change anything in Home Assistant.
 """
 
@@ -104,13 +104,19 @@ class Gateway:
         return self.get("/weather/observations", start=start, end=end, entity_id=entity_id)
 
     # evenly spaced history for forecasting (see greenhouse_forecast.py)
-    def history_resampled(self, entity_id=None, role=None, step="1h", start=None, end=None):
-        """Numeric history on a fixed grid: [[bucket_start_epoch, mean_or_None], ...] per entity. Give entity_id or role."""
-        return self.get("/history/resampled", entity_id=entity_id, role=role, step=step, start=start, end=end)
+    def history_resampled(self, entity_id=None, role=None, step="1h", start=None, end=None, source=None):
+        """Numeric history on a fixed grid: [[bucket_start_epoch, mean_or_None], ...] per entity. Give entity_id or role.
 
-    def history_runtime(self, entity_id=None, role=None, days=14, end=None, timezone=None):
-        """Hours switched on per local day (for example role equipment_gaht_fan), with run counts and completeness."""
-        return self.get("/history/runtime", entity_id=entity_id, role=role, days=days, end=end, timezone=timezone)
+        source: "auto" (default: VictoriaMetrics, months of history, falling back to Home Assistant's roughly ten days),
+        "vm" or "ha". Each series says which source it came from. Under an as-of time use entity_id, not role."""
+        return self.get("/history/resampled", entity_id=entity_id, role=role, step=step, start=start, end=end,
+                        source=source)
+
+    def history_runtime(self, entity_id=None, role=None, days=14, end=None, timezone=None, source=None):
+        """Hours switched on per local day (for example role equipment_gaht_fan), with run counts and completeness.
+        source: "auto" (default), "vm" or "ha", as for history_resampled."""
+        return self.get("/history/runtime", entity_id=entity_id, role=role, days=days, end=end, timezone=timezone,
+                        source=source)
 
     # configuration snapshot and glossary
     def config_files(self):

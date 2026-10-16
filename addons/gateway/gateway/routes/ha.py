@@ -38,7 +38,8 @@ def _upstream(fn):
         raise HTTPException(502, f"Home Assistant unreachable or failed: {exc}") from exc
 
 
-def _window(start: str | None, end: str | None, as_of_ts: float | None) -> tuple[float, float]:
+def _window(start: str | None, end: str | None, as_of_ts: float | None,
+            max_span: float = MAX_SPAN_S) -> tuple[float, float]:
     try:
         end_ts = clip_end(parse_time(end) if end else None, as_of_ts, time.time())
         start_ts = parse_time(start) if start else end_ts - 86400
@@ -46,8 +47,8 @@ def _window(start: str | None, end: str | None, as_of_ts: float | None) -> tuple
         raise HTTPException(400, str(exc)) from exc
     if start_ts >= end_ts:
         raise HTTPException(400, "empty window: start is not before end (after as-of clipping)")
-    if end_ts - start_ts > MAX_SPAN_S:
-        raise HTTPException(400, "window too long: at most 93 days per request")
+    if end_ts - start_ts > max_span:
+        raise HTTPException(400, f"window too long: at most {round(max_span / 86400)} days per request")
     return start_ts, end_ts
 
 
