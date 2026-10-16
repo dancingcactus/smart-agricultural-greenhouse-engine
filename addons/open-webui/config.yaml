@@ -1,5 +1,5 @@
 name: SAGE Agent
-version: "0.3.0"
+version: "0.3.1"
 slug: greenhouse_webui
 description: Chat front end for the SAGE (Open WebUI), using models from OpenRouter
 url: https://github.com/dancingcactus/smart-agricultural-greenhouse-engine
