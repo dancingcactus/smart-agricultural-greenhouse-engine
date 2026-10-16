@@ -2,6 +2,10 @@
 
 All notable changes to the SAGE Sandbox add-on. Versions follow `version` in `config.yaml`.
 
+## 0.2.1
+
+- A failure installing the forecasting models no longer stops the image from building (0.2.0 failed to build on a live install with no usable error). The reason is saved in the image and printed in the add-on log at start, and the gateway client and `greenhouse_forecast` baseline tools still work without the models.
+
 ## 0.2.0
 
 - New `greenhouse_forecast` module: seasonal-naive baseline ("same hour yesterday"), rolling time-split backtest with skill and a trusted flag, forecast bands from backtest errors, anomaly flags, a Chronos-2 forecaster, a LightGBM forecaster for daily equipment runtime, and helpers to make and score predictions. It stores nothing.

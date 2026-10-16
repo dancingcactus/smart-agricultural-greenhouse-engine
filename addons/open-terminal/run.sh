@@ -20,5 +20,11 @@ chown -R 1000:1000 /data/home
 rm -rf /home/user
 ln -s /data/home /home/user
 
+if [ -f /opt/models/INSTALL_FAILED.log ]; then
+    echo "Greenhouse sandbox: the forecasting models did not install when this image was built. Last lines:" >&2
+    tail -n 25 /opt/models/INSTALL_FAILED.log >&2
+fi
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+
 echo "Greenhouse sandbox: outbound limited to ${OPEN_TERMINAL_ALLOWED_DOMAINS}"
 exec /app/entrypoint-slim.sh "$@"
